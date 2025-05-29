@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
 st.title("📊 Dashboard - Notas Fiscais Recebidas")
 
+
 SHEET_ID = "1XpHcU78Jqu-yU3JdoD7M0Cn5Ve4BOtL-6Ew91coBwXE"
 GID = "2129036629"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
@@ -13,11 +14,12 @@ CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
-    st.write("Colunas carregadas:", df.columns.tolist())  # Isso aparecerá no app Streamlit
-    st.write(df.head())  # Para ver as primeiras linhas e entender o formato
+    st.write("Colunas carregadas:", df.columns.tolist())
     return df
 
 df = carregar_dados()
+
+st.dataframe(df) 
 
 df = df[df["Fornecedor"].notna()]
 df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
