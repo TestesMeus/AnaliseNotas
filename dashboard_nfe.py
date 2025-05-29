@@ -5,28 +5,31 @@ from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
 
-# Atualiza a cada 5 segundos (5000 ms)
-count = st_autorefresh(interval=5*1000, limit=None, key="fizzbuzzcounter")
-
-st.title("📊 Dashboard - Notas Fiscais Recebidas")
-
 # URL do Google Sheets exportado como CSV
 SHEET_ID = "1XpHcU78Jqu-yU3JdoD7M0Cn5Ve4BOtL-6Ew91coBwXE"
 GID = "2129036629"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
+# Estado da sessão para armazenar quantidade anterior de linhas
+if "linhas_anteriores" not in st.session_state:
+    st.session_state.linhas_anteriores = 0
+if "parar_refresh" not in st.session_state:
+    st.session_state.parar_refresh = False
+
+# Só faz refresh se ainda não pediu para parar
+if not st.session_state.parar_refresh:
+    count = st_autorefresh(interval=5_000, limit=None, key="autorefresh")
+
 @st.cache_data
-def carregar_dados(rodada):
+def carregar_dados(_chave):
     df = pd.read_csv(CSV_URL)
 
     # Ajustar colunas: pegar cabeçalho verdadeiro da linha 1
     df.columns = df.iloc[0]  # redefine o cabeçalho
     df = df[1:].reset_index(drop=True)
 
-    # Garantir nomes consistentes
     df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio"]
 
-    # Converter tipos
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
     df["Valor Total"] = (
         df["Valor Total"]
@@ -37,13 +40,23 @@ def carregar_dados(rodada):
         .astype(float)
     )
 
-    # Limpar dados
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
 
     return df
 
-# Passa o count para invalidar cache na atualização
-df = carregar_dados(count)
+# Usar contador se existir, senão 0
+chave_refresh = count if 'count' in locals() else 0
+df = carregar_dados(chave_refresh)
+
+# Verifica se houve mudança
+qtd_atual = len(df)
+if qtd_atual == st.session_state.linhas_anteriores:
+    st.session_state.parar_refresh = True
+else:
+    st.session_state.linhas_anteriores = qtd_atual
+
+# --- Visualização ---
+st.title("📊 Dashboard - Notas Fiscais Recebidas")
 
 # Filtro por fornecedor
 fornecedores = df["Fornecedor"].unique()
@@ -81,6 +94,7 @@ with col2:
 st.subheader("📋 Tabela de Notas Fiscais")
 st.dataframe(df_filtrado.sort_values("Emissão", ascending=False), use_container_width=True)
 
+# Situação de envio
 df["Status Envio"] = df["Status Envio"].fillna("Não Informado").str.strip()
 status_counts = df["Status Envio"].value_counts()
 
@@ -91,7 +105,7 @@ col1.metric("Enviadas", status_counts.get("Enviado", 0))
 col2.metric("Não Enviadas", status_counts.get("Não Enviado", 0))
 col3.metric("Canceladas", status_counts.get("Cancelado", 0))
 
-# Gráfico pizza transparente com textos brancos
+# Gráfico pizza
 fig, ax = plt.subplots(facecolor='none')
 ax.pie(
     status_counts,
