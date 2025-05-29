@@ -14,15 +14,11 @@ CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
 
-    # Exibe colunas antes do tratamento (debug)
-    st.write("🔍 Colunas originais:", df.columns.tolist())
-    st.write("🔍 Primeira linha (antes do tratamento):", df.iloc[0].tolist())
-
     # Ajustar colunas: pegar cabeçalho verdadeiro da linha 1
-    df.columns = df.iloc[0]  # redefine cabeçalho
+    df.columns = df.iloc[0]  # redefine o cabeçalho
     df = df[1:].reset_index(drop=True)
 
-    # Renomear colunas para uso consistente
+    # Garantir nomes consistentes
     df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio"]
 
     # Converter tipos
