@@ -1,68 +1,46 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Dashboard de NFe Recebidas", layout="wide")
+st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
+st.title("📊 Dashboard - Notas Fiscais Recebidas")
 
-# Função para carregar e preparar os dados
+# 📄 Dados via Google Sheets
+SHEET_ID = "1XpHcU78Jqu-yU3JdoD7M0Cn5Ve4BOtL-6Ew91coBwXE"
+SHEET_NAME = "NFe Recebidas - MÊS 05"
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
+
 @st.cache_data
 def carregar_dados():
-    uploaded_file = st.file_uploader("📤 Envie o arquivo da planilha (.xlsx):", type=["xlsx"])
-
-    if uploaded_file:
-        df = pd.read_excel(uploaded_file, sheet_name="NFe Recebidas - MÊS 05")
-    # continue com o restante do código de limpeza
-    else:
-        st.warning("Por favor, envie um arquivo para visualizar o dashboard.")
-        st.stop()
-
-    df.columns = df.iloc[0]
-    df = df[1:].reset_index(drop=True)
-    df.columns = ["Número", "Fornecedor", "Origem", "Status", "Emissão", "Total", "Observações"]
-    df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
-    df["Total"] = pd.to_numeric(df["Total"], errors="coerce")
-    df = df.dropna(subset=["Fornecedor", "Total"])
+    df = pd.read_csv(CSV_URL)
     return df
 
+# 📥 Carrega os dados
 df = carregar_dados()
 
-st.title("📊 Dashboard de Análise de Notas Fiscais Recebidas")
+# Limpeza básica
+df = df[df["Fornecedor"].notna()]
+df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
 
-# Filtro por fornecedor
-fornecedores = df["Fornecedor"].unique()
-fornecedor_selecionado = st.selectbox("Selecionar Fornecedor:", ["Todos"] + sorted(fornecedores.tolist()))
+# 📈 Agrupamentos
+notas_por_fornecedor = df["Fornecedor"].value_counts()
+valor_total_por_fornecedor = df.groupby("Fornecedor")["Valor Total"].sum().sort_values(ascending=False)
 
-df_filtrado = df if fornecedor_selecionado == "Todos" else df[df["Fornecedor"] == fornecedor_selecionado]
-
+# Layout
 col1, col2 = st.columns(2)
+
 with col1:
-    st.metric("🔢 Total de Notas", len(df_filtrado))
-with col2:
-    st.metric("💰 Valor Total", f"R$ {df_filtrado['Total'].sum():,.2f}")
-
-st.divider()
-
-# Gráfico de valor diário
-st.subheader("📅 Evolução Diária dos Valores")
-grafico_total_diario = df_filtrado.groupby("Emissão")["Total"].sum()
-st.line_chart(grafico_total_diario)
-
-# Gráficos por fornecedor
-st.subheader("🏆 Top Fornecedores")
-
-top_qtd = df["Fornecedor"].value_counts().head(10)
-top_valor = df.groupby("Fornecedor")["Total"].sum().sort_values(ascending=False).head(10)
-
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("**Por Quantidade de Notas**")
-    st.bar_chart(top_qtd)
+    st.subheader("🧾 Quantidade de Notas por Fornecedor")
+    st.bar_chart(notas_por_fornecedor)
 
 with col2:
-    st.markdown("**Por Valor Total Recebido**")
-    st.bar_chart(top_valor)
+    st.subheader("💰 Valor Total por Fornecedor")
+    st.bar_chart(valor_total_por_fornecedor)
 
-# Tabela
-st.subheader("📋 Tabela de Notas Fiscais")
-st.dataframe(df_filtrado.sort_values("Emissão", ascending=False), use_container_width=True)
+# 🔍 Métricas adicionais
+st.subheader("📌 Indicadores Gerais")
+col3, col4, col5 = st.columns(3)
+col3.metric("Total de Fornecedores", df["Fornecedor"].nunique())
+col4.metric("Total de Notas", len(df))
+col5.metric("Valor Total Geral", f"R$ {df['Valor Total'].sum():,.2f}")
