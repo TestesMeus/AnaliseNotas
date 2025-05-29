@@ -89,8 +89,16 @@ col1.metric("Enviadas", status_counts.get("Enviado", 0))
 col2.metric("Não Enviadas", status_counts.get("Não Enviado", 0))
 col3.metric("Canceladas", status_counts.get("Cancelado", 0))
 
-fig, ax = plt.subplots()
-ax.pie(status_counts, labels=status_counts.index, autopct="%1.1f%%", startangle=90)
+# Criar gráfico com fundo transparente e textos brancos
+fig, ax = plt.subplots(facecolor='none')  # Fundo da figura transparente
+ax.pie(
+    status_counts,
+    labels=status_counts.index,
+    autopct="%1.1f%%",
+    startangle=90,
+    textprops={'color': 'white'}  # Textos brancos
+)
+ax.set_facecolor('none')  # Fundo do gráfico (ax) transparente
 ax.axis("equal")
 st.pyplot(fig)
 
