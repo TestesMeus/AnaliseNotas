@@ -106,22 +106,3 @@ ax.pie(
 ax.set_facecolor('none')  # Fundo do gráfico (ax) transparente
 ax.axis("equal")
 st.pyplot(fig)
-
-
-
-
-# Define o tempo de atualização (em segundos)
-refresh_interval = 60  # 60 segundos = 1 minuto
-
-# Verifica se a sessão começou
-if "start_time" not in st.session_state:
-    st.session_state.start_time = time.time()
-
-# Verifica se já passou o tempo de atualização
-elapsed_time = time.time() - st.session_state.start_time
-if elapsed_time > refresh_interval:
-    st.session_state.start_time = time.time()  # Reinicia o tempo
-    st.experimental_rerun()
-else:
-    # Mostra tempo restante para atualizar
-    st.info(f"🔄 Atualizando em {int(refresh_interval - elapsed_time)} segundos...")
