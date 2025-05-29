@@ -13,6 +13,8 @@ CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
+    st.write("Colunas carregadas:", df.columns.tolist())  # Isso aparecerá no app Streamlit
+    st.write(df.head())  # Para ver as primeiras linhas e entender o formato
     return df
 
 df = carregar_dados()
