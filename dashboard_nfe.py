@@ -18,7 +18,7 @@ if st.button("🔄 Atualizar dados"):
     st.session_state.atualizar += 1
 
 @st.cache_data
-def carregar_dados(_forcar_atualizacao):  # usamos a chave para forçar recarregar
+def carregar_dados():  # usamos a chave para forçar recarregar
     df = pd.read_csv(CSV_URL)
 
     # Ajustar colunas
@@ -41,7 +41,7 @@ def carregar_dados(_forcar_atualizacao):  # usamos a chave para forçar recarreg
     return df
 
 # Carrega os dados
-df = carregar_dados(st.session_state.atualizar)
+df = carregar_dados()
 
 # --- Visualização ---
 st.title("📊 Dashboard - Notas Fiscais Recebidas")
