@@ -15,8 +15,10 @@ if "atualizar" not in st.session_state:
 
 # Botão de atualização manual
 if st.button("🔄 Atualizar dados"):
+    
     st.cache_data.clear()
-    st.experimental_rerun()
+    st.session_state.atualizar += 1
+
 
 @st.cache_data
 def carregar_dados():  # usamos a chave para forçar recarregar
