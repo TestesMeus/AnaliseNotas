@@ -23,25 +23,23 @@ def carregar_dados():
     df = df[1:].reset_index(drop=True)
 
     # Renomear colunas para uso consistente
-    df.columns = ["Número", "Fornecedor", "Origem", "Status", "Emissão", "Valor Total", "Observações"]
+    df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio"]
 
     # Converter tipos
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
     df["Valor Total"] = (
-    df["Valor Total"]
-    .astype(str)                # garantir que tudo seja string
-    .str.replace(".", "", regex=False)  # remove pontos de milhar (ex: 11.739,00 → 11739,00)
-    .str.replace(",", ".", regex=False)  # troca vírgula decimal por ponto
-    .str.strip()                # remove espaços
-    .astype(float)              # converte para número
-)
-
+        df["Valor Total"]
+        .astype(str)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+        .str.strip()
+        .astype(float)
+    )
 
     # Limpar dados
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
 
     return df
-
 # Carregar dados
 df = carregar_dados()
 
@@ -80,3 +78,26 @@ with col2:
 # Tabela
 st.subheader("📋 Tabela de Notas Fiscais")
 st.dataframe(df_filtrado.sort_values("Emissão", ascending=False), use_container_width=True)
+
+
+df["Status Envio"] = df["Status Envio"].fillna("Não Informado").str.strip()
+
+status_counts = df["Status Envio"].value_counts()
+
+
+
+st.subheader("📤 Situação de Envio ao Financeiro")
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Enviadas", status_counts.get("Enviado", 0))
+col2.metric("Não Enviadas", status_counts.get("Não Enviado", 0))
+col3.metric("Canceladas", status_counts.get("Cancelado", 0))
+
+fig, ax = plt.subplots()
+ax.pie(status_counts, labels=status_counts.index, autopct="%1.1f%%", startangle=90)
+ax.axis("equal")
+st.pyplot(fig)
+
+
+
+
