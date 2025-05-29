@@ -8,7 +8,15 @@ st.set_page_config(page_title="Dashboard de NFe Recebidas", layout="wide")
 # Função para carregar e preparar os dados
 @st.cache_data
 def carregar_dados():
-    df = pd.read_excel("nfe-recebidas_01_05_2025-23_05_2025 rev3 (1).xlsx", sheet_name="NFe Recebidas - MÊS 05")
+    uploaded_file = st.file_uploader("📤 Envie o arquivo da planilha (.xlsx):", type=["xlsx"])
+
+    if uploaded_file:
+        df = pd.read_excel(uploaded_file, sheet_name="NFe Recebidas - MÊS 05")
+        # continue com o restante do código de limpeza
+    else:
+        st.warning("Por favor, envie um arquivo para visualizar o dashboard.")
+        st.stop()
+
     df.columns = df.iloc[0]
     df = df[1:].reset_index(drop=True)
     df.columns = ["Número", "Fornecedor", "Origem", "Status", "Emissão", "Total", "Observações"]
