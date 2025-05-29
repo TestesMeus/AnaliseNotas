@@ -15,7 +15,8 @@ if "atualizar" not in st.session_state:
 
 # Botão de atualização manual
 if st.button("🔄 Atualizar dados"):
-    st.session_state.atualizar += 1
+    st.cache_data.clear()
+    st.experimental_rerun()
 
 @st.cache_data
 def carregar_dados():  # usamos a chave para forçar recarregar
@@ -105,7 +106,3 @@ ax.pie(
 ax.set_facecolor('none')
 ax.axis("equal")
 st.pyplot(fig)
-
-"""
-a
-"""
