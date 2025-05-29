@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import time
 from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
 
+# Atualiza a cada 5 segundos (5000 ms)
 count = st_autorefresh(interval=5_000, limit=None, key="fizzbuzzcounter")
 
 st.title("📊 Dashboard - Notas Fiscais Recebidas")
@@ -16,7 +16,7 @@ GID = "2129036629"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
 @st.cache_data
-def carregar_dados():
+def carregar_dados(rodada):
     df = pd.read_csv(CSV_URL)
 
     # Ajustar colunas: pegar cabeçalho verdadeiro da linha 1
@@ -41,8 +41,9 @@ def carregar_dados():
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
 
     return df
-# Carregar dados
-df = carregar_dados()
+
+# Passa o count para invalidar cache na atualização
+df = carregar_dados(count)
 
 # Filtro por fornecedor
 fornecedores = df["Fornecedor"].unique()
@@ -80,12 +81,8 @@ with col2:
 st.subheader("📋 Tabela de Notas Fiscais")
 st.dataframe(df_filtrado.sort_values("Emissão", ascending=False), use_container_width=True)
 
-
 df["Status Envio"] = df["Status Envio"].fillna("Não Informado").str.strip()
-
 status_counts = df["Status Envio"].value_counts()
-
-
 
 st.subheader("📤 Situação de Envio ao Financeiro")
 
@@ -94,15 +91,15 @@ col1.metric("Enviadas", status_counts.get("Enviado", 0))
 col2.metric("Não Enviadas", status_counts.get("Não Enviado", 0))
 col3.metric("Canceladas", status_counts.get("Cancelado", 0))
 
-# Criar gráfico com fundo transparente e textos brancos
-fig, ax = plt.subplots(facecolor='none')  # Fundo da figura transparente
+# Gráfico pizza transparente com textos brancos
+fig, ax = plt.subplots(facecolor='none')
 ax.pie(
     status_counts,
     labels=status_counts.index,
     autopct="%1.1f%%",
     startangle=90,
-    textprops={'color': 'white'}  # Textos brancos
+    textprops={'color': 'white'}
 )
-ax.set_facecolor('none')  # Fundo do gráfico (ax) transparente
+ax.set_facecolor('none')
 ax.axis("equal")
 st.pyplot(fig)
