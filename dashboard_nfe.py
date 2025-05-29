@@ -27,7 +27,15 @@ def carregar_dados():
 
     # Converter tipos
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
-    df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
+    df["Valor Total"] = (
+    df["Valor Total"]
+    .astype(str)                # garantir que tudo seja string
+    .str.replace(".", "", regex=False)  # remove pontos de milhar (ex: 11.739,00 → 11739,00)
+    .str.replace(",", ".", regex=False)  # troca vírgula decimal por ponto
+    .str.strip()                # remove espaços
+    .astype(float)              # converte para número
+)
+
 
     # Limpar dados
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
