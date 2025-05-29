@@ -6,7 +6,7 @@ from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
 
-count = st_autorefresh(interval=30 * 1000, limit=None, key="fizzbuzzcounter")
+count = st_autorefresh(interval=5_000, limit=None, key="fizzbuzzcounter")
 
 st.title("📊 Dashboard - Notas Fiscais Recebidas")
 
