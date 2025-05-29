@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
 
@@ -10,24 +9,21 @@ SHEET_ID = "1XpHcU78Jqu-yU3JdoD7M0Cn5Ve4BOtL-6Ew91coBwXE"
 GID = "2129036629"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
-# Estado da sessão para armazenar quantidade anterior de linhas
-if "linhas_anteriores" not in st.session_state:
-    st.session_state.linhas_anteriores = 0
-if "parar_refresh" not in st.session_state:
-    st.session_state.parar_refresh = False
+# Chave para recarregar os dados
+if "atualizar" not in st.session_state:
+    st.session_state.atualizar = 0
 
-# Só faz refresh se ainda não pediu para parar
-if not st.session_state.parar_refresh:
-    count = st_autorefresh(interval=5_000, limit=None, key="autorefresh")
+# Botão de atualização manual
+if st.button("🔄 Atualizar dados"):
+    st.session_state.atualizar += 1
 
 @st.cache_data
-def carregar_dados(_chave):
+def carregar_dados(_forcar_atualizacao):  # usamos a chave para forçar recarregar
     df = pd.read_csv(CSV_URL)
 
-    # Ajustar colunas: pegar cabeçalho verdadeiro da linha 1
-    df.columns = df.iloc[0]  # redefine o cabeçalho
+    # Ajustar colunas
+    df.columns = df.iloc[0]
     df = df[1:].reset_index(drop=True)
-
     df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio"]
 
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
@@ -44,16 +40,8 @@ def carregar_dados(_chave):
 
     return df
 
-# Usar contador se existir, senão 0
-chave_refresh = count if 'count' in locals() else 0
-df = carregar_dados(chave_refresh)
-
-# Verifica se houve mudança
-qtd_atual = len(df)
-if qtd_atual == st.session_state.linhas_anteriores:
-    st.session_state.parar_refresh = True
-else:
-    st.session_state.linhas_anteriores = qtd_atual
+# Carrega os dados
+df = carregar_dados(st.session_state.atualizar)
 
 # --- Visualização ---
 st.title("📊 Dashboard - Notas Fiscais Recebidas")
