@@ -98,9 +98,10 @@ with col2:
 st.subheader("📋 Tabela de Notas Fiscais")
 st.dataframe(df_filtrado.sort_values("Emissão", ascending=False), use_container_width=True)
 
-# Status de envio
-df["Status Envio"] = df["Status Envio"].fillna("Não Informado").str.strip()
-status_counts = df["Status Envio"].value_counts()
+# Status de envio (com filtro por mês)
+df_filtrado_mes["Status Envio"] = df_filtrado_mes["Status Envio"].fillna("Não Informado").str.strip()
+status_counts = df_filtrado_mes["Status Envio"].value_counts()
+
 
 st.subheader("📤 Situação de Envio ao Financeiro")
 col1, col2, col3 = st.columns(3)
