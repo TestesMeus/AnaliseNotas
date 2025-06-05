@@ -49,18 +49,27 @@ df = carregar_dados()
 # --- Visualização ---
 st.title("📊 Dashboard - Notas Fiscais Recebidas")
 
-# 🆕 Adiciona coluna de Mês/Ano
-df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
+# 🆕 Gráfico de barras por mês (visão geral)
+st.subheader("📆 Total Mensal por Valor")
+valor_por_mes = df.groupby("AnoMes")["Valor Total"].sum().sort_index()
+st.bar_chart(valor_por_mes)
+
+# Filtro por fornecedor
+fornecedores = df["Fornecedor"].unique()
+fornecedor_selecionado = st.selectbox("Selecionar Fornecedor:", ["Todos"] + sorted(fornecedores.tolist()))
+df_filtrado = df if fornecedor_selecionado == "Todos" else df[df["Fornecedor"] == fornecedor_selecionado]
+
+# 🆕 Adiciona coluna de Mês/Ano (depois do filtro de fornecedor)
+df_filtrado["AnoMes"] = df_filtrado["Emissão"].dt.to_period("M").astype(str)
 
 # 🆕 Filtro por mês
-meses_disponiveis = sorted(df["AnoMes"].dropna().unique())
+meses_disponiveis = sorted(df_filtrado["AnoMes"].dropna().unique())
 mes_selecionado = st.selectbox("Selecionar Mês:", ["Todos"] + meses_disponiveis)
 
-df_filtrado_mes = df_filtrado.copy()
-if mes_selecionado != "Todos":
-    df_filtrado_mes = df_filtrado[df_filtrado["AnoMes"] == mes_selecionado]
+# 🆕 Aplica filtro por mês
+df_filtrado_mes = df_filtrado if mes_selecionado == "Todos" else df_filtrado[df_filtrado["AnoMes"] == mes_selecionado]
 
-# Atualiza as métricas com base no mês filtrado
+# Métricas com base no filtro por mês
 col1, col2 = st.columns(2)
 with col1:
     st.metric("🔢 Total de Notas (mês)", len(df_filtrado_mes))
@@ -71,13 +80,8 @@ st.divider()
 
 # 🆕 Gráfico de barras por mês (visão geral)
 st.subheader("📆 Total Mensal por Valor")
-valor_por_mes = df.groupby("AnoMes")["Valor Total"].sum().sort_index()
+valor_por_mes = df.groupby(df["Emissão"].dt.to_period("M").astype(str))["Valor Total"].sum().sort_index()
 st.bar_chart(valor_por_mes)
-
-# Filtro por fornecedor
-fornecedores = df["Fornecedor"].unique()
-fornecedor_selecionado = st.selectbox("Selecionar Fornecedor:", ["Todos"] + sorted(fornecedores.tolist()))
-df_filtrado = df if fornecedor_selecionado == "Todos" else df[df["Fornecedor"] == fornecedor_selecionado]
 
 # Métricas
 col1, col2 = st.columns(2)
