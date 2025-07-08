@@ -39,18 +39,17 @@ def verificar_status_pagamento(row):
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
 
-    # Teste para entender como está vindo o CSV
+    # Exibe estrutura original para debug (pode comentar depois)
     st.subheader("📄 Estrutura Original do CSV")
     st.write(df.head(10))
     st.write("🔢 Número de linhas:", len(df))
 
-    # Verifica se a primeira linha é realmente o cabeçalho
+    # Confere se o cabeçalho veio correto, corrige se necessário
     if "Fornecedor" not in df.columns:
-        # Tentando pegar cabeçalho correto
         df.columns = df.iloc[0]
         df = df[1:].reset_index(drop=True)
 
-    # Renomeia colunas de forma defensiva
+    # Define colunas esperadas e renomeia defensivamente
     colunas_esperadas = [
         "Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total",
         "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"
@@ -58,27 +57,41 @@ def carregar_dados():
     if len(df.columns) >= len(colunas_esperadas):
         df.columns = colunas_esperadas[:len(df.columns)]
 
-    # Conversões e limpeza
+    # Converte coluna Emissão para datetime
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
+
+    # Remove "R$", pontos e troca vírgula por ponto para Valor Total e converte para float
     df["Valor Total"] = (
         df["Valor Total"]
         .astype(str)
+        .str.replace("R\$", "", regex=True)
         .str.replace(".", "", regex=False)
         .str.replace(",", ".", regex=False)
         .str.strip()
     )
-    df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
+    df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce").fillna(0)
 
-    # Comentado para não remover linhas que possam ter dados nulos
-    # df = df.dropna(subset=["Fornecedor", "Valor Total"])
-
-    # Substituir nulos nas colunas importantes para evitar problemas nos filtros
-    df["Fornecedor"] = df["Fornecedor"].fillna("Não informado")
-    df["Valor Total"] = df["Valor Total"].fillna(0)
-
-    df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
+    # NÃO remover linhas que têm datas em branco, apenas converter datas (NaT onde vazio)
     df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
     df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
+
+    # Opcional: remover linhas que não têm fornecedor ou valor zero, se fizer sentido no seu caso
+    df = df.dropna(subset=["Fornecedor"])
+    # df = df[df["Valor Total"] > 0]  # Use só se quiser ignorar valores zerados
+
+    # Coluna auxiliar para filtro por mês/ano
+    df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
+
+    # Função para status pagamento
+    def verificar_status_pagamento(row):
+        try:
+            if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]):
+                return "Em Dia" if row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado"
+            else:
+                return "Sem Dados"
+        except Exception:
+            return "Erro"
+
     df["Status Pagamento"] = df.apply(verificar_status_pagamento, axis=1).astype(str)
 
     return df
