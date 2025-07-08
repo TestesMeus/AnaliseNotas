@@ -52,10 +52,16 @@ def carregar_dados():
     df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
     df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
 
-    df["Status Pagamento"] = df.apply(
-        lambda row: "Em Dia" if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]) and row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado",
-        axis=1
-    )
+    def verificar_status_pagamento(row):
+    try:
+        if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]):
+            return "Em Dia" if row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado"
+        else:
+            return "Sem Dados"
+    except Exception:
+        return "Erro"
+
+    df["Status Pagamento"] = df.apply(verificar_status_pagamento, axis=1).astype(str)
     return df
 
 df = carregar_dados()
