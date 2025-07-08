@@ -20,11 +20,6 @@ if st.button("🔄 Atualizar dados"):
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
 
-    # Exibe estrutura original para debug (pode comentar depois)
-    st.subheader("📄 Estrutura Original do CSV")
-    st.write(df.head(10))
-    st.write("🔢 Número de linhas:", len(df))
-
     # Confere se o cabeçalho veio correto, corrige se necessário
     if "Fornecedor" not in df.columns:
         df.columns = df.iloc[0]
