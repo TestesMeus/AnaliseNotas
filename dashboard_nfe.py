@@ -25,6 +25,15 @@ try:
 except Exception as e:
     st.error(f"❌ Erro ao ler CSV bruto: {e}")
 
+def verificar_status_pagamento(row):
+    try:
+        if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]):
+            return "Em Dia" if row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado"
+        else:
+            return "Sem Dados"
+    except Exception:
+        return "Erro"
+
 # ⚙️ Função principal de carregamento de dados
 @st.cache_data
 def carregar_dados():
@@ -51,15 +60,6 @@ def carregar_dados():
 
     df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
     df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
-
-    def verificar_status_pagamento(row):
-    try:
-        if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]):
-            return "Em Dia" if row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado"
-        else:
-            return "Sem Dados"
-    except Exception:
-        return "Erro"
 
     df["Status Pagamento"] = df.apply(verificar_status_pagamento, axis=1).astype(str)
     return df
