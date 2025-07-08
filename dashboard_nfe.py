@@ -39,24 +39,15 @@ def verificar_status_pagamento(row):
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
 
-    # Teste para entender como está vindo o CSV
-    st.subheader("📄 Estrutura Original do CSV")
-    st.write(df.head(10))
-    st.write("🔢 Número de linhas:", len(df))
-
-    # Verifica se a primeira linha é realmente o cabeçalho
-    if "Fornecedor" not in df.columns:
-        # Tentando pegar cabeçalho correto
-        df.columns = df.iloc[0]
-        df = df[1:].reset_index(drop=True)
-
-    # Renomeia colunas de forma defensiva
+    # Renomeia colunas se elas estiverem diferentes do esperado (compara os nomes)
     colunas_esperadas = [
         "Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total",
         "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"
     ]
-    if len(df.columns) >= len(colunas_esperadas):
-        df.columns = colunas_esperadas[:len(df.columns)]
+    
+    # Se as colunas forem diferentes (sem considerar ordem), tenta forçar a renomeação pela posição
+    if list(df.columns) != colunas_esperadas and len(df.columns) >= len(colunas_esperadas):
+        df.columns = colunas_esperadas + list(df.columns[len(colunas_esperadas):])
 
     # Conversões e limpeza
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
@@ -68,7 +59,10 @@ def carregar_dados():
         .str.strip()
     )
     df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
+
+    # Remover linhas com valores nulos essenciais
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
+
     df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
     df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
     df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
@@ -76,15 +70,17 @@ def carregar_dados():
 
     return df
 
-
+# Carrega os dados já fora da função para ter controle sobre prints e debugging
 df = carregar_dados()
 
-# ⚠️ BLOCO DE TESTE 2: Visualizar DataFrame carregado
+# Debug / inspeção após carregar dados
 st.subheader("🔍 TESTE 2 — Após carregar_dados()")
 st.write(df.head())
+st.write("📌 Colunas atuais:")
+st.write(df.columns.tolist())
 st.write("📌 Tipos de dados:")
 st.write(df.dtypes)
-st.write("📌 Nulos por coluna:")
+st.write("📌 Valores nulos por coluna:")
 st.write(df.isnull().sum())
 
 # 🧭 A partir daqui segue o dashboard normal...
