@@ -38,13 +38,27 @@ def verificar_status_pagamento(row):
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
-    df.columns = df.iloc[0]
-    df = df[1:].reset_index(drop=True)
 
-    # Ajuste do nome das colunas
-    df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total",
-                  "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"]
+    # Teste para entender como está vindo o CSV
+    st.subheader("📄 Estrutura Original do CSV")
+    st.write(df.head(10))
+    st.write("🔢 Número de linhas:", len(df))
 
+    # Verifica se a primeira linha é realmente o cabeçalho
+    if "Fornecedor" not in df.columns:
+        # Tentando pegar cabeçalho correto
+        df.columns = df.iloc[0]
+        df = df[1:].reset_index(drop=True)
+
+    # Renomeia colunas de forma defensiva
+    colunas_esperadas = [
+        "Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total",
+        "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"
+    ]
+    if len(df.columns) >= len(colunas_esperadas):
+        df.columns = colunas_esperadas[:len(df.columns)]
+
+    # Conversões e limpeza
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
     df["Valor Total"] = (
         df["Valor Total"]
@@ -53,16 +67,15 @@ def carregar_dados():
         .str.replace(",", ".", regex=False)
         .str.strip()
     )
-
     df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
     df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
-
     df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
     df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
-
     df["Status Pagamento"] = df.apply(verificar_status_pagamento, axis=1).astype(str)
+
     return df
+
 
 df = carregar_dados()
 
