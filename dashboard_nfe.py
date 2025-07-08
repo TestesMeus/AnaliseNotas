@@ -23,7 +23,8 @@ def carregar_dados():
     df = pd.read_csv(CSV_URL)
     df.columns = df.iloc[0]
     df = df[1:].reset_index(drop=True)
-    df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio"]
+    df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"]
+
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
     df["Valor Total"] = (
         df["Valor Total"]
@@ -33,8 +34,17 @@ def carregar_dados():
         .str.strip()
         .astype(float)
     )
+
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
-    df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)  # 🆕 Criação da coluna para agrupamento mensal
+    df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
+
+    # ✅ Tratar novas colunas aqui
+    df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
+    df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
+    df["Status Pagamento"] = df.apply(
+        lambda row: "Em Dia" if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]) and row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado",
+        axis=1
+    )
     return df
 
 # Carrega os dados
@@ -120,3 +130,24 @@ ax.pie(
 ax.set_facecolor('none')
 ax.axis("equal")
 st.pyplot(fig)
+
+st.subheader("📈 Indicador de Pagamento (Em dia x Atrasado)")
+
+status_pagamento_counts = df["Status Pagamento"].value_counts()
+
+col1, col2 = st.columns(2)
+col1.metric("Notas em Dia", status_pagamento_counts.get("Em Dia", 0))
+col2.metric("Notas Atrasadas", status_pagamento_counts.get("Atrasado", 0))
+
+fig2, ax2 = plt.subplots(facecolor='none')
+ax2.pie(
+    status_pagamento_counts,
+    labels=status_pagamento_counts.index,
+    autopct="%1.1f%%",
+    startangle=90,
+    textprops={'color': 'white'}
+)
+ax2.set_facecolor('none')
+ax2.axis("equal")
+st.pyplot(fig2)
+
