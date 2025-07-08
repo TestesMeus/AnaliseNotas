@@ -61,7 +61,7 @@ def carregar_dados():
     df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
 
     # Remover linhas com valores nulos essenciais
-    df = df.dropna(subset=["Fornecedor", "Valor Total"])
+    #df = df.dropna(subset=["Fornecedor", "Valor Total"])
 
     df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
     df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
