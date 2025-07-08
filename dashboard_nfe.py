@@ -19,6 +19,7 @@ if st.button("🔄 Atualizar dados"):
     st.session_state.atualizar += 1
 
 @st.cache_data
+@st.cache_data
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
     df.columns = df.iloc[0]
@@ -26,6 +27,7 @@ def carregar_dados():
     df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"]
 
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
+
     df["Valor Total"] = (
         df["Valor Total"]
         .astype(str)
@@ -33,14 +35,10 @@ def carregar_dados():
         .str.replace(",", ".", regex=False)
         .str.strip()
     )
-
-df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
-df = df.dropna(subset=["Fornecedor", "Valor Total"])
-
+    df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
     df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
 
-    # ✅ Tratar novas colunas aqui
     df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
     df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
     df["Status Pagamento"] = df.apply(
