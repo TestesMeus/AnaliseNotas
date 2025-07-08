@@ -58,10 +58,8 @@ def carregar_dados():
     if len(df.columns) >= len(colunas_esperadas):
         df.columns = colunas_esperadas[:len(df.columns)]
 
-    # Substituir valores vazios em 'Fornecedor' por texto padrão
-    df["Fornecedor"] = df["Fornecedor"].fillna("Não informado")
-
-    # Conversões e limpeza da coluna 'Valor Total'
+    # Conversões e limpeza
+    df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
     df["Valor Total"] = (
         df["Valor Total"]
         .astype(str)
@@ -70,18 +68,17 @@ def carregar_dados():
         .str.strip()
     )
     df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
-    df["Valor Total"] = df["Valor Total"].fillna(0)  # substituir NaN por zero
 
-    # Opcional: remover linhas sem fornecedor, mas aqui já substituímos por texto padrão, então não remove nada
-    # df = df.dropna(subset=["Fornecedor"]) 
+    # Comentado para não remover linhas que possam ter dados nulos
+    # df = df.dropna(subset=["Fornecedor", "Valor Total"])
 
-    # Conversão datas
-    df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
-    df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
-    df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
+    # Substituir nulos nas colunas importantes para evitar problemas nos filtros
+    df["Fornecedor"] = df["Fornecedor"].fillna("Não informado")
+    df["Valor Total"] = df["Valor Total"].fillna(0)
 
     df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
-
+    df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
+    df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
     df["Status Pagamento"] = df.apply(verificar_status_pagamento, axis=1).astype(str)
 
     return df
@@ -104,11 +101,17 @@ st.title("📊 Dashboard - Notas Fiscais Recebidas")
 # Filtros
 fornecedores = df["Fornecedor"].unique()
 fornecedor_selecionado = st.selectbox("Selecionar Fornecedor:", ["Todos"] + sorted(fornecedores.tolist()))
-df_filtrado = df if fornecedor_selecionado == "Todos" else df[df["Fornecedor"] == fornecedor_selecionado]
+if fornecedor_selecionado == "Todos":
+    df_filtrado = df
+else:
+    df_filtrado = df[df["Fornecedor"] == fornecedor_selecionado]
 
 meses_disponiveis = sorted(df_filtrado["AnoMes"].dropna().unique())
 mes_selecionado = st.selectbox("Selecionar Mês:", ["Todos"] + meses_disponiveis)
-df_filtrado_mes = df_filtrado if mes_selecionado == "Todos" else df_filtrado[df_filtrado["AnoMes"] == mes_selecionado]
+if mes_selecionado == "Todos":
+    df_filtrado_mes = df_filtrado
+else:
+    df_filtrado_mes = df_filtrado[df_filtrado["AnoMes"] == mes_selecionado]
 
 # Métricas por mês
 if not df_filtrado_mes.empty:
