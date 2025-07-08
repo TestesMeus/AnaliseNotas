@@ -15,25 +15,6 @@ if st.button("🔄 Atualizar dados"):
     st.cache_data.clear()
     st.session_state.atualizar += 1
 
-# ⚠️ BLOCO DE TESTE 1: Testar leitura bruta
-st.subheader("🔍 TESTE 1 — CSV bruto direto da planilha")
-try:
-    df_teste_csv = pd.read_csv(CSV_URL)
-    st.write("✅ CSV carregado com sucesso")
-    st.write("Primeiras linhas do CSV:")
-    st.write(df_teste_csv.head())
-except Exception as e:
-    st.error(f"❌ Erro ao ler CSV bruto: {e}")
-
-def verificar_status_pagamento(row):
-    try:
-        if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]):
-            return "Em Dia" if row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado"
-        else:
-            return "Sem Dados"
-    except Exception:
-        return "Erro"
-
 # ⚙️ Função principal de carregamento de dados
 @st.cache_data
 def carregar_dados():
@@ -98,14 +79,6 @@ def carregar_dados():
 
 
 df = carregar_dados()
-
-# ⚠️ BLOCO DE TESTE 2: Visualizar DataFrame carregado
-st.subheader("🔍 TESTE 2 — Após carregar_dados()")
-st.write(df.head())
-st.write("📌 Tipos de dados:")
-st.write(df.dtypes)
-st.write("📌 Nulos por coluna:")
-st.write(df.isnull().sum())
 
 # 🧭 A partir daqui segue o dashboard normal...
 
