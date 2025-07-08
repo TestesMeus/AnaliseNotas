@@ -15,12 +15,26 @@ if st.button("🔄 Atualizar dados"):
     st.cache_data.clear()
     st.session_state.atualizar += 1
 
+# ⚠️ BLOCO DE TESTE 1: Testar leitura bruta
+st.subheader("🔍 TESTE 1 — CSV bruto direto da planilha")
+try:
+    df_teste_csv = pd.read_csv(CSV_URL)
+    st.write("✅ CSV carregado com sucesso")
+    st.write("Primeiras linhas do CSV:")
+    st.write(df_teste_csv.head())
+except Exception as e:
+    st.error(f"❌ Erro ao ler CSV bruto: {e}")
+
+# ⚙️ Função principal de carregamento de dados
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv(CSV_URL)
     df.columns = df.iloc[0]
     df = df[1:].reset_index(drop=True)
-    df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"]
+
+    # Ajuste do nome das colunas
+    df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total",
+                  "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"]
 
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
     df["Valor Total"] = (
@@ -45,6 +59,16 @@ def carregar_dados():
     return df
 
 df = carregar_dados()
+
+# ⚠️ BLOCO DE TESTE 2: Visualizar DataFrame carregado
+st.subheader("🔍 TESTE 2 — Após carregar_dados()")
+st.write(df.head())
+st.write("📌 Tipos de dados:")
+st.write(df.dtypes)
+st.write("📌 Nulos por coluna:")
+st.write(df.isnull().sum())
+
+# 🧭 A partir daqui segue o dashboard normal...
 
 st.title("📊 Dashboard - Notas Fiscais Recebidas")
 
