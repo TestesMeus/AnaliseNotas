@@ -26,14 +26,16 @@ def carregar_dados():
     df.columns = ["Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total", "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"]
 
     df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
-    df["Valor Total"] = (
-        df["Valor Total"]
-        .astype(str)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-        .str.strip()
-        .astype(float)
-    )
+df["Valor Total"] = (
+    df["Valor Total"]
+    .astype(str)
+    .str.replace(".", "", regex=False)
+    .str.replace(",", ".", regex=False)
+    .str.strip()
+)
+
+df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce")
+df = df.dropna(subset=["Fornecedor", "Valor Total"])
 
     df = df.dropna(subset=["Fornecedor", "Valor Total"])
     df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
