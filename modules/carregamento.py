@@ -84,6 +84,5 @@ def carregar_dados_requisicoes(arquivos_xlsx):
     df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
     df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
-    df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]
     df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
     return df_req 
