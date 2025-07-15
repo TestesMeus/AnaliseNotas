@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
 
@@ -75,132 +76,231 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# 🧭 A partir daqui segue o dashboard normal...
+# Adiciona menu lateral
+aba = st.sidebar.radio("Escolha a aba:", ["Dashboard NF", "Dados Produtividade", "Dados Requisições"])
 
-st.title("📊 Dashboard - Notas Fiscais Recebidas")
+if aba == "Dashboard NF":
+    # 🧭 A partir daqui segue o dashboard normal...
+    st.title("📊 Dashboard - Notas Fiscais Recebidas")
 
-# Filtros
-fornecedores = df["Fornecedor"].unique()
-fornecedor_selecionado = st.selectbox("Selecionar Fornecedor:", ["Todos"] + sorted(fornecedores.tolist()))
-if fornecedor_selecionado == "Todos":
-    df_filtrado = df
+    # Filtros
+    fornecedores = df["Fornecedor"].unique()
+    fornecedor_selecionado = st.selectbox("Selecionar Fornecedor:", ["Todos"] + sorted(fornecedores.tolist()))
+    if fornecedor_selecionado == "Todos":
+        df_filtrado = df
+    else:
+        df_filtrado = df[df["Fornecedor"] == fornecedor_selecionado]
+
+    meses_disponiveis = sorted(df_filtrado["AnoMes"].dropna().unique())
+    mes_selecionado = st.selectbox("Selecionar Mês:", ["Todos"] + meses_disponiveis)
+    if mes_selecionado == "Todos":
+        df_filtrado_mes = df_filtrado
+    else:
+        df_filtrado_mes = df_filtrado[df_filtrado["AnoMes"] == mes_selecionado]
+
+    # Métricas por mês
+    if not df_filtrado_mes.empty:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("🔢 Total de Notas (mês)", len(df_filtrado_mes))
+        with col2:
+            st.metric("💰 Valor Total (mês)", f"R$ {df_filtrado_mes['Valor Total'].sum():,.2f}")
+    else:
+        st.info("Nenhum dado disponível para o mês selecionado.")
+
+    st.divider()
+
+    # Gráfico mensal geral
+    valor_por_mes = df.groupby("AnoMes")["Valor Total"].sum().sort_index()
+    if not valor_por_mes.empty:
+        st.subheader("📆 Total Mensal por Valor")
+        st.bar_chart(valor_por_mes)
+    else:
+        st.info("Sem dados para gerar o gráfico mensal.")
+
+    # Métricas totais
+    if not df_filtrado.empty:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("🔢 Total de Notas", len(df_filtrado))
+        with col2:
+            st.metric("💰 Valor Total", f"R$ {df_filtrado['Valor Total'].sum():,.2f}")
+    else:
+        st.info("Sem dados para calcular totais.")
+
+    st.divider()
+
+    # Gráfico diário
+    grafico_total_diario = df_filtrado.groupby("Emissão")["Valor Total"].sum()
+    if not grafico_total_diario.empty:
+        st.subheader("📅 Evolução Diária dos Valores")
+        st.line_chart(grafico_total_diario)
+    else:
+        st.info("Sem dados para evolução diária.")
+
+    # Top Fornecedores
+    top_qtd = df["Fornecedor"].value_counts().head(10)
+    top_valor = df.groupby("Fornecedor")["Valor Total"].sum().sort_values(ascending=False).head(10)
+
+    if not top_qtd.empty and not top_valor.empty:
+        st.subheader("🏆 Top Fornecedores")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Por Quantidade de Notas**")
+            st.bar_chart(top_qtd)
+        with col2:
+            st.markdown("**Por Valor Total Recebido**")
+            st.bar_chart(top_valor)
+    else:
+        st.info("Sem dados suficientes para exibir os top fornecedores.")
+
+    # Tabela
+    if not df_filtrado.empty:
+        st.subheader("📋 Tabela de Notas Fiscais")
+        st.dataframe(df_filtrado.sort_values("Emissão", ascending=False), use_container_width=True)
+    else:
+        st.info("Nenhuma nota fiscal para exibir.")
+
+    # Status de envio
+    df_filtrado_mes["Status Envio"] = df_filtrado_mes["Status Envio"].fillna("Não Informado").str.strip()
+    status_counts = df_filtrado_mes["Status Envio"].value_counts()
+
+    if not status_counts.empty:
+        st.subheader("📤 Situação de Envio ao Financeiro")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Enviadas", status_counts.get("Enviado", 0))
+        col2.metric("Não Enviadas", status_counts.get("Não Enviado", 0))
+        col3.metric("Canceladas", status_counts.get("Cancelado", 0))
+
+        fig, ax = plt.subplots(facecolor='none')
+        ax.pie(
+            status_counts,
+            labels=status_counts.index,
+            autopct="%1.1f%%",
+            startangle=90,
+            textprops={'color': 'white'}
+        )
+        ax.set_facecolor('none')
+        ax.axis("equal")
+        st.pyplot(fig)
+    else:
+        st.info("Sem informações sobre envio ao financeiro.")
+
+    # Status de pagamento
+    status_pagamento_counts = df["Status Pagamento"].value_counts()
+
+    if not status_pagamento_counts.empty:
+        st.subheader("📈 Indicador de Pagamento (Em dia x Atrasado)")
+        col1, col2 = st.columns(2)
+        col1.metric("Notas em Dia", status_pagamento_counts.get("Em Dia", 0))
+        col2.metric("Notas Atrasadas", status_pagamento_counts.get("Atrasado", 0))
+
+        fig2, ax2 = plt.subplots(facecolor='none')
+        ax2.pie(
+            status_pagamento_counts,
+            labels=status_pagamento_counts.index,
+            autopct="%1.1f%%",
+            startangle=90,
+            textprops={'color': 'white'}
+        )
+        ax2.set_facecolor('none')
+        ax2.axis("equal")
+        st.pyplot(fig2)
+    else:
+        st.info("Sem dados sobre pagamento das notas.")
 else:
-    df_filtrado = df[df["Fornecedor"] == fornecedor_selecionado]
+    if aba == "Dados Produtividade":
+        st.title("📊 Dados Produtividade")
+        st.markdown("---")
+        
+        # 1. Listar arquivos .xls
+        pasta = os.path.dirname(__file__)
+        arquivos_xls = [arq for arq in os.listdir(pasta) if arq.endswith(".xls") and "2025" in arq]
+        
+        if not arquivos_xls:
+            st.warning("Nenhum arquivo .xls de 2025 encontrado na pasta.")
+        else:
+            # 2. Ler e unificar os dados
+            lista_df = []
+            for arquivo in arquivos_xls:
+                try:
+                    df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
+                    # Padroniza o nome das colunas
+                    if "USUARIO_DE_CRIAÇÃO_RM" in df_mes.columns and "DATA_CRIAÇÃO_RM" in df_mes.columns:
+                        lista_df.append(df_mes[["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]].copy())
+                except Exception as e:
+                    st.error(f"Erro ao ler {arquivo}: {e}")
+            if not lista_df:
+                st.warning("Nenhum dado encontrado nas planilhas.")
+            else:
+                df_prod = pd.concat(lista_df, ignore_index=True)
+                df_prod = df_prod.dropna(subset=["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]).copy()
+                df_prod["DATA_CRIAÇÃO_RM"] = pd.to_datetime(df_prod["DATA_CRIAÇÃO_RM"], errors="coerce", dayfirst=True)
+                df_prod = df_prod.dropna(subset=["DATA_CRIAÇÃO_RM"]).copy()
+                # 3. Total por requisitante
+                total_por_requisitante = df_prod["USUARIO_DE_CRIAÇÃO_RM"].value_counts().reset_index()
+                total_por_requisitante.columns = ["Requisitante", "Total de RMs"]
+                st.subheader("Total de RMs por Requisitante")
+                st.dataframe(total_por_requisitante, use_container_width=True)
+                st.metric("Total Geral de RMs", len(df_prod))
+                # 4. Médias
+                st.markdown("---")
+                st.subheader("Médias de RMs por Requisitante")
+                # Média diária
+                diaria = df_prod.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_prod["DATA_CRIAÇÃO_RM"].dt.date]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
+                diaria.columns = ["Requisitante", "Média Diária"]
+                # Média semanal
+                semanal = df_prod.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_prod["DATA_CRIAÇÃO_RM"].dt.isocalendar().week]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
+                semanal.columns = ["Requisitante", "Média Semanal"]
+                # Média mensal
+                mensal = df_prod.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_prod["DATA_CRIAÇÃO_RM"].dt.to_period("M")]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
+                mensal.columns = ["Requisitante", "Média Mensal"]
+                # Unir todas as médias
+                medias = total_por_requisitante.merge(diaria, on="Requisitante", how="left")
+                medias = medias.merge(semanal, on="Requisitante", how="left")
+                medias = medias.merge(mensal, on="Requisitante", how="left")
+                st.dataframe(medias, use_container_width=True)
 
-meses_disponiveis = sorted(df_filtrado["AnoMes"].dropna().unique())
-mes_selecionado = st.selectbox("Selecionar Mês:", ["Todos"] + meses_disponiveis)
-if mes_selecionado == "Todos":
-    df_filtrado_mes = df_filtrado
-else:
-    df_filtrado_mes = df_filtrado[df_filtrado["AnoMes"] == mes_selecionado]
+                # Gráficos comparativos
+                st.markdown("---")
+                st.subheader("Gráficos Comparativos entre Requisitantes")
+                import matplotlib.pyplot as plt
 
-# Métricas por mês
-if not df_filtrado_mes.empty:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("🔢 Total de Notas (mês)", len(df_filtrado_mes))
-    with col2:
-        st.metric("💰 Valor Total (mês)", f"R$ {df_filtrado_mes['Valor Total'].sum():,.2f}")
-else:
-    st.info("Nenhum dado disponível para o mês selecionado.")
+                # Gráfico Total de RMs
+                fig1, ax1 = plt.subplots()
+                ax1.bar(medias["Requisitante"], medias["Total de RMs"], color='royalblue')
+                ax1.set_ylabel("Total de RMs")
+                ax1.set_xlabel("Requisitante")
+                ax1.set_title("Total de RMs por Requisitante")
+                plt.xticks(rotation=45, ha='right')
+                st.pyplot(fig1)
 
-st.divider()
+                # Gráfico Média Diária
+                fig2, ax2 = plt.subplots()
+                ax2.bar(medias["Requisitante"], medias["Média Diária"], color='seagreen')
+                ax2.set_ylabel("Média Diária")
+                ax2.set_xlabel("Requisitante")
+                ax2.set_title("Média Diária de RMs por Requisitante")
+                plt.xticks(rotation=45, ha='right')
+                st.pyplot(fig2)
 
-# Gráfico mensal geral
-valor_por_mes = df.groupby("AnoMes")["Valor Total"].sum().sort_index()
-if not valor_por_mes.empty:
-    st.subheader("📆 Total Mensal por Valor")
-    st.bar_chart(valor_por_mes)
-else:
-    st.info("Sem dados para gerar o gráfico mensal.")
+                # Gráfico Média Semanal
+                fig3, ax3 = plt.subplots()
+                ax3.bar(medias["Requisitante"], medias["Média Semanal"], color='darkorange')
+                ax3.set_ylabel("Média Semanal")
+                ax3.set_xlabel("Requisitante")
+                ax3.set_title("Média Semanal de RMs por Requisitante")
+                plt.xticks(rotation=45, ha='right')
+                st.pyplot(fig3)
 
-# Métricas totais
-if not df_filtrado.empty:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("🔢 Total de Notas", len(df_filtrado))
-    with col2:
-        st.metric("💰 Valor Total", f"R$ {df_filtrado['Valor Total'].sum():,.2f}")
-else:
-    st.info("Sem dados para calcular totais.")
-
-st.divider()
-
-# Gráfico diário
-grafico_total_diario = df_filtrado.groupby("Emissão")["Valor Total"].sum()
-if not grafico_total_diario.empty:
-    st.subheader("📅 Evolução Diária dos Valores")
-    st.line_chart(grafico_total_diario)
-else:
-    st.info("Sem dados para evolução diária.")
-
-# Top Fornecedores
-top_qtd = df["Fornecedor"].value_counts().head(10)
-top_valor = df.groupby("Fornecedor")["Valor Total"].sum().sort_values(ascending=False).head(10)
-
-if not top_qtd.empty and not top_valor.empty:
-    st.subheader("🏆 Top Fornecedores")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**Por Quantidade de Notas**")
-        st.bar_chart(top_qtd)
-    with col2:
-        st.markdown("**Por Valor Total Recebido**")
-        st.bar_chart(top_valor)
-else:
-    st.info("Sem dados suficientes para exibir os top fornecedores.")
-
-# Tabela
-if not df_filtrado.empty:
-    st.subheader("📋 Tabela de Notas Fiscais")
-    st.dataframe(df_filtrado.sort_values("Emissão", ascending=False), use_container_width=True)
-else:
-    st.info("Nenhuma nota fiscal para exibir.")
-
-# Status de envio
-df_filtrado_mes["Status Envio"] = df_filtrado_mes["Status Envio"].fillna("Não Informado").str.strip()
-status_counts = df_filtrado_mes["Status Envio"].value_counts()
-
-if not status_counts.empty:
-    st.subheader("📤 Situação de Envio ao Financeiro")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Enviadas", status_counts.get("Enviado", 0))
-    col2.metric("Não Enviadas", status_counts.get("Não Enviado", 0))
-    col3.metric("Canceladas", status_counts.get("Cancelado", 0))
-
-    fig, ax = plt.subplots(facecolor='none')
-    ax.pie(
-        status_counts,
-        labels=status_counts.index,
-        autopct="%1.1f%%",
-        startangle=90,
-        textprops={'color': 'white'}
-    )
-    ax.set_facecolor('none')
-    ax.axis("equal")
-    st.pyplot(fig)
-else:
-    st.info("Sem informações sobre envio ao financeiro.")
-
-# Status de pagamento
-status_pagamento_counts = df["Status Pagamento"].value_counts()
-
-if not status_pagamento_counts.empty:
-    st.subheader("📈 Indicador de Pagamento (Em dia x Atrasado)")
-    col1, col2 = st.columns(2)
-    col1.metric("Notas em Dia", status_pagamento_counts.get("Em Dia", 0))
-    col2.metric("Notas Atrasadas", status_pagamento_counts.get("Atrasado", 0))
-
-    fig2, ax2 = plt.subplots(facecolor='none')
-    ax2.pie(
-        status_pagamento_counts,
-        labels=status_pagamento_counts.index,
-        autopct="%1.1f%%",
-        startangle=90,
-        textprops={'color': 'white'}
-    )
-    ax2.set_facecolor('none')
-    ax2.axis("equal")
-    st.pyplot(fig2)
-else:
-    st.info("Sem dados sobre pagamento das notas.")
+                # Gráfico Média Mensal
+                fig4, ax4 = plt.subplots()
+                ax4.bar(medias["Requisitante"], medias["Média Mensal"], color='mediumpurple')
+                ax4.set_ylabel("Média Mensal")
+                ax4.set_xlabel("Requisitante")
+                ax4.set_title("Média Mensal de RMs por Requisitante")
+                plt.xticks(rotation=45, ha='right')
+                st.pyplot(fig4)
+    else:
+        st.title(f"📊 {aba}")
+        st.info("Em breve...")
