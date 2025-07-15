@@ -330,13 +330,6 @@ else:
                     # Converter colunas de data para datetime
                     df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
                     df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
-                    # Contagem simples de requisições por contrato (todas as linhas válidas)
-                    st.markdown("---")
-                    st.subheader("Total de Pedidos por Contrato (Contagem Simples)")
-                    total_simples_contrato = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
-                    total_simples_contrato.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
-                    st.dataframe(total_simples_contrato, use_container_width=True)
-                    st.metric("Total Geral de Pedidos (Contagem Simples)", len(df_req))
                     # Calcular diferença em dias
                     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
                     # Manter apenas casos com diferença >= 0
@@ -344,6 +337,7 @@ else:
                     df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
                     meses_disponiveis = sorted(df_req["AnoMes"].unique())
                     opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis
+                    # MOVER O SELECTBOX PARA AQUI
                     mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_requisicoes")
                     if mes_selecionado == "2025 (Todos)":
                         df_filtro = df_req.copy()
