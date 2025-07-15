@@ -275,6 +275,10 @@ else:
                 medias = total_por_requisitante.merge(diaria, on="Requisitante", how="left")
                 medias = medias.merge(semanal, on="Requisitante", how="left")
                 medias = medias.merge(mensal, on="Requisitante", how="left")
+                # Formatar médias para uma casa decimal
+                for col in ["Média Diária", "Média Semanal", "Média Mensal"]:
+                    if col in medias.columns:
+                        medias[col] = medias[col].astype(float).round(1)
                 st.dataframe(medias, use_container_width=True)
 
                 # Gráficos comparativos interativos ordenados
