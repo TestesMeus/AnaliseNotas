@@ -346,6 +346,10 @@ else:
                     df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
                     # Calcular diferença em dias
                     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
+                    # Diagnóstico: linhas negativas
+                    linhas_antes_negativo = len(df_req)
+                    linhas_negativas = (df_req["Dias_RM_para_SC"] < 0).sum()
+                    st.info(f"Linhas descartadas por diferença negativa (SC antes da RM): {linhas_negativas}")
                     df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]  # descarta casos negativos
                     df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
                     meses_disponiveis = sorted(df_req["AnoMes"].unique())
