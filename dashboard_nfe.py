@@ -339,7 +339,6 @@ else:
                     st.metric("Total Geral de Pedidos (Contagem Simples)", len(df_req))
                     # Calcular diferença em dias
                     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
-
                     # Manter apenas casos com diferença >= 0
                     df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]
                     df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
