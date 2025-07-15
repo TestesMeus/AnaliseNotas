@@ -20,8 +20,8 @@ def carregar_dados_nf(CSV_URL):
         df["Valor Total"]
         .astype(str)
         .str.replace("R$", "", regex=True)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
+        .str.replace(".", "", regex=False)  # Remove separador de milhar
+        .str.replace(",", ".", regex=False)  # Troca vírgula decimal por ponto
         .str.strip()
     )
     df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce").fillna(0)
