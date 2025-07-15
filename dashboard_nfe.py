@@ -277,28 +277,19 @@ else:
                 medias = medias.merge(mensal, on="Requisitante", how="left")
                 st.dataframe(medias, use_container_width=True)
 
-                # Gráficos comparativos
+                # Gráficos comparativos interativos
                 st.markdown("---")
-                st.subheader("Gráficos Comparativos entre Requisitantes")
-                import matplotlib.pyplot as plt
-                import matplotlib.ticker as ticker
-
-                def plot_bar(medias, coluna, titulo, cor):
-                    fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.bar(medias["Requisitante"], medias[coluna], color=cor)
-                    ax.set_ylabel(coluna, fontsize=10)
-                    ax.set_xlabel("Requisitante", fontsize=10)
-                    ax.set_title(titulo, fontsize=12)
-                    ax.tick_params(axis='x', labelrotation=30, labelsize=8)
-                    ax.tick_params(axis='y', labelsize=9)
-                    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-                    fig.tight_layout()
-                    return fig
-
-                st.pyplot(plot_bar(medias, "Total de RMs", "Total de RMs por Requisitante", 'royalblue'))
-                st.pyplot(plot_bar(medias, "Média Diária", "Média Diária de RMs por Requisitante", 'seagreen'))
-                st.pyplot(plot_bar(medias, "Média Semanal", "Média Semanal de RMs por Requisitante", 'darkorange'))
-                st.pyplot(plot_bar(medias, "Média Mensal", "Média Mensal de RMs por Requisitante", 'mediumpurple'))
+                st.subheader("Gráficos Comparativos entre Requisitantes (Interativo)")
+                top_n = 20
+                plot_data = medias.sort_values("Total de RMs", ascending=False).head(top_n).set_index("Requisitante")
+                st.markdown("**Total de RMs por Requisitante**")
+                st.bar_chart(plot_data["Total de RMs"])
+                st.markdown("**Média Diária de RMs por Requisitante**")
+                st.bar_chart(plot_data["Média Diária"])
+                st.markdown("**Média Semanal de RMs por Requisitante**")
+                st.bar_chart(plot_data["Média Semanal"])
+                st.markdown("**Média Mensal de RMs por Requisitante**")
+                st.bar_chart(plot_data["Média Mensal"])
     else:
         st.title(f"📊 {aba}")
         st.info("Em breve...")
