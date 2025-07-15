@@ -316,18 +316,18 @@ else:
                     try:
                         df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
                         # Preencher apenas as colunas importantes para baixo (ffill)
-                        for col in ['DATA_AUTORIZACAO_RM', 'DATA_CRIAÇÃO_SC']:
+                        for col in ['DATA_AUTORIZACAO_RM', 'DATA_CRIAÇÃO_SC', 'CENTRO_CUSTO_OC']:
                             if col in df_mes.columns:
                                 df_mes[col] = df_mes[col].ffill()
-                        if "DATA_AUTORIZACAO_RM" in df_mes.columns and "DATA_CRIAÇÃO_SC" in df_mes.columns:
-                            lista_df.append(df_mes[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]].copy())
+                        if "DATA_AUTORIZACAO_RM" in df_mes.columns and "DATA_CRIAÇÃO_SC" in df_mes.columns and "CENTRO_CUSTO_OC" in df_mes.columns:
+                            lista_df.append(df_mes[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]].copy())
                     except Exception as e:
                         st.error(f"Erro ao ler {arquivo}: {e}")
                 if not lista_df:
                     st.warning("Nenhum dado encontrado nas planilhas.")
                 else:
                     df_req = pd.concat(lista_df, ignore_index=True)
-                    df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
+                    df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]).copy()
                     df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
                     df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
                     df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
@@ -346,7 +346,14 @@ else:
                     tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
                     tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
                     st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
-                    st.dataframe(df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].round({"Dias_RM_para_SC": 1}), use_container_width=True)
+                    st.dataframe(df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)), use_container_width=True)
+                    # Contagem de requisições por contrato
+                    st.markdown("---")
+                    st.subheader("Quantidade de Requisições por Contrato (CENTRO_CUSTO_OC)")
+                    total_por_contrato = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
+                    total_por_contrato.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Requisições"]
+                    st.dataframe(total_por_contrato, use_container_width=True)
+                    st.metric("Total Geral de Requisições", len(df_filtro))
         else:
             st.title(f"📊 {aba}")
             st.info("Em breve...")
