@@ -326,40 +326,13 @@ else:
                 if not lista_df:
                     st.warning("Nenhum dado encontrado nas planilhas.")
                 else:
-                    # Diagnóstico: mostrar total de linhas lidas e descartadas
-                    total_linhas = sum([len(df) for df in lista_df])
-                    st.info(f"Total de linhas lidas das planilhas: {total_linhas}")
                     df_req = pd.concat(lista_df, ignore_index=True)
-                    linhas_antes = len(df_req)
-                    # Diagnóstico: mostrar exemplos de dados brutos
-                    st.write("Exemplo de dados lidos:")
-                    st.dataframe(df_req.head(10))
-                    # Remover linhas com dados incompletos
                     df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]).copy()
-                    linhas_depois = len(df_req)
-                    st.info(f"Linhas após remover dados incompletos: {linhas_depois} (descartadas: {linhas_antes - linhas_depois})")
-                    # Conferir datas válidas
                     df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
                     df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
-                    linhas_datas_validas = df_req[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]].notna().all(axis=1).sum()
-                    st.info(f"Linhas com datas válidas: {linhas_datas_validas} (descartadas: {len(df_req) - linhas_datas_validas})")
                     df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
                     # Calcular diferença em dias
                     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
-                    # Diagnóstico: linhas negativas
-                    linhas_antes_negativo = len(df_req)
-                    linhas_negativas = (df_req["Dias_RM_para_SC"] < 0).sum()
-                    st.info(f"Linhas descartadas por diferença negativa (SC antes da RM): {linhas_negativas}")
-                    df_negativos = df_req[df_req["Dias_RM_para_SC"] < 0].copy()
-                    import io
-                    if not df_negativos.empty:
-                        csv_negativos = df_negativos.to_csv(index=False, sep=';', encoding='utf-8')
-                        st.download_button(
-                            label="Baixar casos descartados (SC antes da RM)",
-                            data=csv_negativos,
-                            file_name="casos_descartados_sc_antes_rm.csv",
-                            mime="text/csv"
-                        )
                     # Indicador de pedidos convertidos em SC no mesmo dia
                     pedidos_mesmo_dia = (df_req["Dias_RM_para_SC"] == 0).sum()
                     st.metric("Pedidos convertidos em SC no mesmo dia", pedidos_mesmo_dia)
