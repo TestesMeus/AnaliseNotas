@@ -327,10 +327,13 @@ else:
                     st.warning("Nenhum dado encontrado nas planilhas.")
                 else:
                     df_req = pd.concat(lista_df, ignore_index=True)
-                    df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]).copy()
-                    df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
-                    df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
-                    df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
+                    # Contagem simples de requisições por contrato (todas as linhas válidas)
+                    st.markdown("---")
+                    st.subheader("Total de Pedidos por Contrato (Contagem Simples)")
+                    total_simples_contrato = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
+                    total_simples_contrato.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+                    st.dataframe(total_simples_contrato, use_container_width=True)
+                    st.metric("Total Geral de Pedidos (Contagem Simples)", len(df_req))
                     # Calcular diferença em dias
                     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
                     # Indicador de pedidos convertidos em SC no mesmo dia
