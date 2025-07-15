@@ -63,6 +63,15 @@ if aba == "Dashboard NF":
     else:
         st.info("Sem dados para gerar o gráfico mensal.")
 
+    # Gráfico semanal geral (ano todo)
+    df['Semana_Ano'] = df['Emissão'].dt.isocalendar().week
+    valor_por_semana = df.groupby('Semana_Ano')["Valor Total"].sum().sort_index()
+    if not valor_por_semana.empty:
+        st.subheader("📅 Total Semanal por Valor (Ano Inteiro)")
+        st.line_chart(valor_por_semana)
+    else:
+        st.info("Sem dados para gerar o gráfico semanal.")
+
     # Métricas totais
     if not df_filtrado.empty:
         col1, col2 = st.columns(2)
@@ -266,21 +275,13 @@ elif aba == "Dados Requisições":
             else:
                 df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
 
-            # Só use mes_selecionado daqui pra frente!
+            # Exibir contagem simples de pedidos por contrato (filtrada pelo mês)
             st.markdown("---")
             st.subheader(f"Total de Pedidos por Contrato - {mes_selecionado if mes_selecionado != '2025 (Todos)' else 'Todos os Meses'}")
             total_simples_contrato_filtro = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
             total_simples_contrato_filtro.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
             st.dataframe(total_simples_contrato_filtro, use_container_width=True)
             st.metric(f"Total Geral de Pedidos ({mes_selecionado})", len(df_filtro))
-
-            # Exibir contagem simples de pedidos por contrato (total geral)
-            st.markdown("---")
-            st.subheader("Total de Pedidos por Contrato - Todos os Meses")
-            total_simples_contrato_geral = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
-            total_simples_contrato_geral.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
-            st.dataframe(total_simples_contrato_geral, use_container_width=True)
-            st.metric("Total Geral de Pedidos (Todos os Meses)", len(df_req))
 
             # Tempo médio
             tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
@@ -318,9 +319,10 @@ elif aba == "Dados Pagamento":
         )
         df_filtro["JUROS_MULTA_PARCELA"] = pd.to_numeric(df_filtro["JUROS_MULTA_PARCELA"], errors="coerce").fillna(0)
         total_juros = df_filtro["JUROS_MULTA_PARCELA"].sum()
-        st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {total_juros:,.2f}")
-    else:
-        st.info("Coluna 'JUROS_MULTA_PARCELA' não encontrada nos dados.")
+        if total_juros > 0:
+            st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {total_juros:,.2f}")
+        # Se não houver valores, não exibe nada
+    # Se não existir a coluna, não exibe nada
 else:
     st.title(f"📊 {aba}")
     st.info("Em breve...")
