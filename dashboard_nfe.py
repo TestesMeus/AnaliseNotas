@@ -344,13 +344,21 @@ else:
                     else:
                         df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
 
-                    # Exibir contagem simples de pedidos por contrato (todas as linhas válidas)
+                    # Exibir contagem simples de pedidos por contrato (filtrada pelo mês)
                     st.markdown("---")
-                    st.subheader("Total de Pedidos por Contrato (Contagem Simples)")
-                    total_simples_contrato = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
-                    total_simples_contrato.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
-                    st.dataframe(total_simples_contrato, use_container_width=True)
-                    st.metric("Total Geral de Pedidos (Contagem Simples)", len(df_req))
+                    st.subheader(f"Total de Pedidos por Contrato - {mes_selecionado if mes_selecionado != '2025 (Todos)' else 'Todos os Meses'}")
+                    total_simples_contrato_filtro = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
+                    total_simples_contrato_filtro.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+                    st.dataframe(total_simples_contrato_filtro, use_container_width=True)
+                    st.metric(f"Total Geral de Pedidos ({mes_selecionado})", len(df_filtro))
+
+                    # Exibir contagem simples de pedidos por contrato (total geral)
+                    st.markdown("---")
+                    st.subheader("Total de Pedidos por Contrato - Todos os Meses")
+                    total_simples_contrato_geral = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
+                    total_simples_contrato_geral.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+                    st.dataframe(total_simples_contrato_geral, use_container_width=True)
+                    st.metric("Total Geral de Pedidos (Todos os Meses)", len(df_req))
 
                     # Tempo médio
                     tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
