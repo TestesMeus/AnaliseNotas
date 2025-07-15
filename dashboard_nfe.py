@@ -302,5 +302,51 @@ else:
                 st.markdown("**Média Mensal de RMs por Requisitante**")
                 st.bar_chart(plot_mensal["Média Mensal"])
     else:
-        st.title(f"📊 {aba}")
-        st.info("Em breve...")
+        if aba == "Dados Requisições":
+            st.title("📊 Dados Requisições")
+            st.markdown("---")
+            # 1. Listar arquivos .xlsx limpos
+            pasta = os.getcwd()
+            arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq]
+            if not arquivos_xlsx:
+                st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.")
+            else:
+                lista_df = []
+                for arquivo in arquivos_xlsx:
+                    try:
+                        df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
+                        # Preencher apenas as colunas importantes para baixo (ffill)
+                        for col in ['DATA_AUTORIZACAO_RM', 'DATA_CRIAÇÃO_SC']:
+                            if col in df_mes.columns:
+                                df_mes[col] = df_mes[col].ffill()
+                        if "DATA_AUTORIZACAO_RM" in df_mes.columns and "DATA_CRIAÇÃO_SC" in df_mes.columns:
+                            lista_df.append(df_mes[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]].copy())
+                    except Exception as e:
+                        st.error(f"Erro ao ler {arquivo}: {e}")
+                if not lista_df:
+                    st.warning("Nenhum dado encontrado nas planilhas.")
+                else:
+                    df_req = pd.concat(lista_df, ignore_index=True)
+                    df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
+                    df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
+                    df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
+                    df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
+                    # Calcular diferença em dias
+                    df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
+                    df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]  # descarta casos negativos
+                    df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
+                    meses_disponiveis = sorted(df_req["AnoMes"].unique())
+                    opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis
+                    mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_requisicoes")
+                    if mes_selecionado == "2025 (Todos)":
+                        df_filtro = df_req.copy()
+                    else:
+                        df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
+                    # Tempo médio
+                    tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
+                    tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
+                    st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
+                    st.dataframe(df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].round({"Dias_RM_para_SC": 1}), use_container_width=True)
+        else:
+            st.title(f"📊 {aba}")
+            st.info("Em breve...")
