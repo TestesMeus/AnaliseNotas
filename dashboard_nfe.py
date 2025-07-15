@@ -262,7 +262,7 @@ elif aba == "Dados Pagamento":
                 df_filtro['JUROS_MULTA_PARCELA'] = pd.to_numeric(df_filtro['JUROS_MULTA_PARCELA'], errors='coerce').fillna(0)
                 total_juros = df_filtro['JUROS_MULTA_PARCELA'].sum()
                 if total_juros > 0:
-                    st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {total_juros:,.2f}")
+                    st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {int(total_juros):,}")
 else:
     st.title(f"📊 {aba}")
     st.info("Em breve...")
