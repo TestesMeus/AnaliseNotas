@@ -326,10 +326,23 @@ else:
                 if not lista_df:
                     st.warning("Nenhum dado encontrado nas planilhas.")
                 else:
+                    # Diagnóstico: mostrar total de linhas lidas e descartadas
+                    total_linhas = sum([len(df) for df in lista_df])
+                    st.info(f"Total de linhas lidas das planilhas: {total_linhas}")
                     df_req = pd.concat(lista_df, ignore_index=True)
+                    linhas_antes = len(df_req)
+                    # Diagnóstico: mostrar exemplos de dados brutos
+                    st.write("Exemplo de dados lidos:")
+                    st.dataframe(df_req.head(10))
+                    # Remover linhas com dados incompletos
                     df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]).copy()
+                    linhas_depois = len(df_req)
+                    st.info(f"Linhas após remover dados incompletos: {linhas_depois} (descartadas: {linhas_antes - linhas_depois})")
+                    # Conferir datas válidas
                     df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
                     df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
+                    linhas_datas_validas = df_req[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]].notna().all(axis=1).sum()
+                    st.info(f"Linhas com datas válidas: {linhas_datas_validas} (descartadas: {len(df_req) - linhas_datas_validas})")
                     df_req = df_req.dropna(subset=["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC"]).copy()
                     # Calcular diferença em dias
                     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
@@ -347,6 +360,11 @@ else:
                     tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
                     st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
                     st.dataframe(df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)), use_container_width=True)
+                    # Gráfico de linha: total de requisições por mês
+                    st.markdown("---")
+                    st.subheader("Evolução Mensal da Quantidade de Requisições")
+                    requisicoes_por_mes = df_req.groupby("AnoMes").size()
+                    st.line_chart(requisicoes_por_mes)
                     # Contagem de requisições por contrato
                     st.markdown("---")
                     st.subheader("Quantidade de Requisições por Contrato (CENTRO_CUSTO_OC)")
