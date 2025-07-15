@@ -277,19 +277,26 @@ else:
                 medias = medias.merge(mensal, on="Requisitante", how="left")
                 st.dataframe(medias, use_container_width=True)
 
-                # Gráficos comparativos interativos
+                # Gráficos comparativos interativos ordenados
                 st.markdown("---")
                 st.subheader("Gráficos Comparativos entre Requisitantes (Interativo)")
                 top_n = 20
-                plot_data = medias.sort_values("Total de RMs", ascending=False).head(top_n).set_index("Requisitante")
+                # Total de RMs
+                plot_total = medias.sort_values("Total de RMs", ascending=False).head(top_n).set_index("Requisitante")
                 st.markdown("**Total de RMs por Requisitante**")
-                st.bar_chart(plot_data["Total de RMs"])
+                st.bar_chart(plot_total["Total de RMs"])
+                # Média Diária
+                plot_diaria = medias.sort_values("Média Diária", ascending=False).head(top_n).set_index("Requisitante")
                 st.markdown("**Média Diária de RMs por Requisitante**")
-                st.bar_chart(plot_data["Média Diária"])
+                st.bar_chart(plot_diaria["Média Diária"])
+                # Média Semanal
+                plot_semanal = medias.sort_values("Média Semanal", ascending=False).head(top_n).set_index("Requisitante")
                 st.markdown("**Média Semanal de RMs por Requisitante**")
-                st.bar_chart(plot_data["Média Semanal"])
+                st.bar_chart(plot_semanal["Média Semanal"])
+                # Média Mensal
+                plot_mensal = medias.sort_values("Média Mensal", ascending=False).head(top_n).set_index("Requisitante")
                 st.markdown("**Média Mensal de RMs por Requisitante**")
-                st.bar_chart(plot_data["Média Mensal"])
+                st.bar_chart(plot_mensal["Média Mensal"])
     else:
         st.title(f"📊 {aba}")
         st.info("Em breve...")
