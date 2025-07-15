@@ -235,34 +235,25 @@ elif aba == "Dados Pagamento":
         for arquivo in arquivos_xlsx:
             try:
                 df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
-                if 'JUROS_MULTA_PARCELA' in df_mes.columns and 'DATA_PAGAMENTO_PARCELA' in df_mes.columns:
-                    df_mes['AnoMes'] = pd.to_datetime(df_mes['DATA_PAGAMENTO_PARCELA'], errors='coerce', dayfirst=True).dt.to_period('M').astype(str)
-                    lista_df.append(df_mes[['JUROS_MULTA_PARCELA', 'AnoMes']].copy())
+                if 'JUROS_MULTA_PARCELA' in df_mes.columns:
+                    lista_df.append(df_mes[['JUROS_MULTA_PARCELA']].copy())
             except Exception as e:
                 st.error(f"Erro ao ler {arquivo}: {e}")
         if not lista_df:
             st.info("Nenhum dado de juros/multa encontrado nas planilhas.")
         else:
             df_pag = pd.concat(lista_df, ignore_index=True)
-            meses_disponiveis = sorted(df_pag['AnoMes'].dropna().unique())
-            opcoes_filtro = ["Todos"] + meses_disponiveis
-            mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_pagamento")
-            if mes_selecionado == "Todos":
-                df_filtro = df_pag.copy()
-            else:
-                df_filtro = df_pag[df_pag['AnoMes'] == mes_selecionado].copy()
-            if 'JUROS_MULTA_PARCELA' in df_filtro.columns:
-                df_filtro['JUROS_MULTA_PARCELA'] = (
-                    df_filtro['JUROS_MULTA_PARCELA'].astype(str)
-                    .str.replace("R$", "", regex=False)
-                    .str.replace(".", "", regex=False)
-                    .str.replace(",", "", regex=False)
-                    .str.strip()
-                )
-                df_filtro['JUROS_MULTA_PARCELA'] = pd.to_numeric(df_filtro['JUROS_MULTA_PARCELA'], errors='coerce').fillna(0)
-                total_juros = df_filtro['JUROS_MULTA_PARCELA'].sum()
-                if total_juros > 0:
-                    st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {int(total_juros):,}")
+            df_pag['JUROS_MULTA_PARCELA'] = (
+                df_pag['JUROS_MULTA_PARCELA'].astype(str)
+                .str.replace("R$", "", regex=False)
+                .str.replace(".", "", regex=False)
+                .str.replace(",", "", regex=False)
+                .str.strip()
+            )
+            df_pag['JUROS_MULTA_PARCELA'] = pd.to_numeric(df_pag['JUROS_MULTA_PARCELA'], errors='coerce').fillna(0)
+            total_juros = df_pag['JUROS_MULTA_PARCELA'].sum()
+            if total_juros > 0:
+                st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {int(total_juros):,}")
 else:
     st.title(f"📊 {aba}")
     st.info("Em breve...")
