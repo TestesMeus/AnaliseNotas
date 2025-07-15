@@ -237,23 +237,34 @@ else:
                 df_prod = df_prod.dropna(subset=["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]).copy()
                 df_prod["DATA_CRIAÇÃO_RM"] = pd.to_datetime(df_prod["DATA_CRIAÇÃO_RM"], errors="coerce", dayfirst=True)
                 df_prod = df_prod.dropna(subset=["DATA_CRIAÇÃO_RM"]).copy()
+
+                # Filtro por mês
+                df_prod["AnoMes"] = df_prod["DATA_CRIAÇÃO_RM"].dt.strftime("%Y-%m")
+                meses_disponiveis = sorted(df_prod["AnoMes"].unique())
+                opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis
+                mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro)
+                if mes_selecionado == "2025 (Todos)":
+                    df_filtro = df_prod.copy()
+                else:
+                    df_filtro = df_prod[df_prod["AnoMes"] == mes_selecionado].copy()
+
                 # 3. Total por requisitante
-                total_por_requisitante = df_prod["USUARIO_DE_CRIAÇÃO_RM"].value_counts().reset_index()
+                total_por_requisitante = df_filtro["USUARIO_DE_CRIAÇÃO_RM"].value_counts().reset_index()
                 total_por_requisitante.columns = ["Requisitante", "Total de RMs"]
                 st.subheader("Total de RMs por Requisitante")
                 st.dataframe(total_por_requisitante, use_container_width=True)
-                st.metric("Total Geral de RMs", len(df_prod))
+                st.metric("Total Geral de RMs", len(df_filtro))
                 # 4. Médias
                 st.markdown("---")
                 st.subheader("Médias de RMs por Requisitante")
                 # Média diária
-                diaria = df_prod.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_prod["DATA_CRIAÇÃO_RM"].dt.date]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
+                diaria = df_filtro.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_filtro["DATA_CRIAÇÃO_RM"].dt.date]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
                 diaria.columns = ["Requisitante", "Média Diária"]
                 # Média semanal
-                semanal = df_prod.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_prod["DATA_CRIAÇÃO_RM"].dt.isocalendar().week]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
+                semanal = df_filtro.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_filtro["DATA_CRIAÇÃO_RM"].dt.isocalendar().week]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
                 semanal.columns = ["Requisitante", "Média Semanal"]
                 # Média mensal
-                mensal = df_prod.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_prod["DATA_CRIAÇÃO_RM"].dt.to_period("M")]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
+                mensal = df_filtro.groupby(["USUARIO_DE_CRIAÇÃO_RM", df_filtro["DATA_CRIAÇÃO_RM"].dt.to_period("M")]).size().groupby("USUARIO_DE_CRIAÇÃO_RM").mean().reset_index()
                 mensal.columns = ["Requisitante", "Média Mensal"]
                 # Unir todas as médias
                 medias = total_por_requisitante.merge(diaria, on="Requisitante", how="left")
@@ -265,42 +276,24 @@ else:
                 st.markdown("---")
                 st.subheader("Gráficos Comparativos entre Requisitantes")
                 import matplotlib.pyplot as plt
+                import matplotlib.ticker as ticker
 
-                # Gráfico Total de RMs
-                fig1, ax1 = plt.subplots()
-                ax1.bar(medias["Requisitante"], medias["Total de RMs"], color='royalblue')
-                ax1.set_ylabel("Total de RMs")
-                ax1.set_xlabel("Requisitante")
-                ax1.set_title("Total de RMs por Requisitante")
-                plt.xticks(rotation=45, ha='right')
-                st.pyplot(fig1)
+                def plot_bar(medias, coluna, titulo, cor):
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.bar(medias["Requisitante"], medias[coluna], color=cor)
+                    ax.set_ylabel(coluna, fontsize=10)
+                    ax.set_xlabel("Requisitante", fontsize=10)
+                    ax.set_title(titulo, fontsize=12)
+                    ax.tick_params(axis='x', labelrotation=30, labelsize=8)
+                    ax.tick_params(axis='y', labelsize=9)
+                    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+                    fig.tight_layout()
+                    return fig
 
-                # Gráfico Média Diária
-                fig2, ax2 = plt.subplots()
-                ax2.bar(medias["Requisitante"], medias["Média Diária"], color='seagreen')
-                ax2.set_ylabel("Média Diária")
-                ax2.set_xlabel("Requisitante")
-                ax2.set_title("Média Diária de RMs por Requisitante")
-                plt.xticks(rotation=45, ha='right')
-                st.pyplot(fig2)
-
-                # Gráfico Média Semanal
-                fig3, ax3 = plt.subplots()
-                ax3.bar(medias["Requisitante"], medias["Média Semanal"], color='darkorange')
-                ax3.set_ylabel("Média Semanal")
-                ax3.set_xlabel("Requisitante")
-                ax3.set_title("Média Semanal de RMs por Requisitante")
-                plt.xticks(rotation=45, ha='right')
-                st.pyplot(fig3)
-
-                # Gráfico Média Mensal
-                fig4, ax4 = plt.subplots()
-                ax4.bar(medias["Requisitante"], medias["Média Mensal"], color='mediumpurple')
-                ax4.set_ylabel("Média Mensal")
-                ax4.set_xlabel("Requisitante")
-                ax4.set_title("Média Mensal de RMs por Requisitante")
-                plt.xticks(rotation=45, ha='right')
-                st.pyplot(fig4)
+                st.pyplot(plot_bar(medias, "Total de RMs", "Total de RMs por Requisitante", 'royalblue'))
+                st.pyplot(plot_bar(medias, "Média Diária", "Média Diária de RMs por Requisitante", 'seagreen'))
+                st.pyplot(plot_bar(medias, "Média Semanal", "Média Semanal de RMs por Requisitante", 'darkorange'))
+                st.pyplot(plot_bar(medias, "Média Mensal", "Média Mensal de RMs por Requisitante", 'mediumpurple'))
     else:
         st.title(f"📊 {aba}")
         st.info("Em breve...")
