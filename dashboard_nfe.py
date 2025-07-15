@@ -344,6 +344,14 @@ else:
                     else:
                         df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
 
+                    # Exibir contagem simples de pedidos por contrato (todas as linhas válidas)
+                    st.markdown("---")
+                    st.subheader("Total de Pedidos por Contrato (Contagem Simples)")
+                    total_simples_contrato = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
+                    total_simples_contrato.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+                    st.dataframe(total_simples_contrato, use_container_width=True)
+                    st.metric("Total Geral de Pedidos (Contagem Simples)", len(df_req))
+
                     # Tempo médio
                     tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
                     tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
