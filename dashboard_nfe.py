@@ -339,9 +339,7 @@ else:
                     st.metric("Total Geral de Pedidos (Contagem Simples)", len(df_req))
                     # Calcular diferença em dias
                     df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
-                    # Indicador de pedidos convertidos em SC no mesmo dia
-                    pedidos_mesmo_dia = (df_req["Dias_RM_para_SC"] == 0).sum()
-                    st.metric("Pedidos convertidos em SC no mesmo dia", pedidos_mesmo_dia)
+
                     # Manter apenas casos com diferença >= 0
                     df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]
                     df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
@@ -352,23 +350,23 @@ else:
                         df_filtro = df_req.copy()
                     else:
                         df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
+
                     # Tempo médio
                     tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
                     tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
                     st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
-                    st.dataframe(df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)), use_container_width=True)
+                    st.dataframe(
+                        df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(
+                            Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)
+                        ),
+                        use_container_width=True
+                    )
                     # Gráfico de linha: total de requisições por mês
                     st.markdown("---")
                     st.subheader("Evolução Mensal da Quantidade de Requisições")
                     requisicoes_por_mes = df_req.groupby("AnoMes").size()
                     st.line_chart(requisicoes_por_mes)
-                    # Contagem de requisições por contrato
-                    st.markdown("---")
-                    st.subheader("Quantidade de Requisições por Contrato (CENTRO_CUSTO_OC)")
-                    total_por_contrato = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
-                    total_por_contrato.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Requisições"]
-                    st.dataframe(total_por_contrato, use_container_width=True)
-                    st.metric("Total Geral de Requisições", len(df_filtro))
+
         else:
             st.title(f"📊 {aba}")
             st.info("Em breve...")
