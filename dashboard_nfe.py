@@ -206,10 +206,10 @@ elif aba == "Dados Requisições":
                 df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
             st.markdown("---")
             st.subheader(f"Total de Pedidos por Contrato - {mes_selecionado if mes_selecionado != '2025 (Todos)' else 'Todos os Meses'}")
-            total_simples_contrato_filtro = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
+            total_simples_contrato_filtro = df_filtro['CENTRO_CUSTO_OC'].value_counts().reset_index()
             total_simples_contrato_filtro.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
             st.dataframe(total_simples_contrato_filtro, use_container_width=True)
-            st.metric(f"Total Geral de Pedidos ({mes_selecionado})", len(df_filtro))
+            st.metric(f"Total Geral de Pedidos ({mes_selecionado})", df_filtro['CENTRO_CUSTO_OC'].count())
             tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
             tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
             st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
