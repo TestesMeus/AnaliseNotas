@@ -7,10 +7,14 @@ import streamlit as st
 def carregar_dados_nf(CSV_URL):
     df = pd.read_csv(CSV_URL)
 
+    # Normaliza nomes das colunas (remove espaços extras e não-quebráveis)
+    df.columns = df.columns.str.strip().str.replace('\u00A0', ' ')
+
     # Confere se o cabeçalho veio correto, corrige se necessário
     if "Fornecedor" not in df.columns:
         df.columns = df.iloc[0]
         df = df[1:].reset_index(drop=True)
+        df.columns = df.columns.str.strip().str.replace('\u00A0', ' ')
 
     # Define colunas esperadas e renomeia defensivamente
     colunas_esperadas = [
