@@ -213,18 +213,23 @@ else:
         st.title("📊 Dados Produtividade")
         st.markdown("---")
         
-        # 1. Listar arquivos .xls
+        # 1. Listar arquivos .xlsx limpos
         pasta = os.getcwd()
-        arquivos_xls = [arq for arq in os.listdir(pasta) if arq.endswith(".xls") and "2025" in arq]
+        arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq]
         
-        if not arquivos_xls:
-            st.warning("Nenhum arquivo .xls de 2025 encontrado na pasta.")
+        if not arquivos_xlsx:
+            st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.")
         else:
             # 2. Ler e unificar os dados
             lista_df = []
-            for arquivo in arquivos_xls:
+            for arquivo in arquivos_xlsx:
                 try:
                     df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
+                    # Preencher apenas as colunas importantes para baixo (ffill)
+                    if 'USUARIO_DE_CRIAÇÃO_RM' in df_mes.columns:
+                        df_mes['USUARIO_DE_CRIAÇÃO_RM'] = df_mes['USUARIO_DE_CRIAÇÃO_RM'].fillna(method='ffill')
+                    if 'DATA_CRIAÇÃO_RM' in df_mes.columns:
+                        df_mes['DATA_CRIAÇÃO_RM'] = df_mes['DATA_CRIAÇÃO_RM'].fillna(method='ffill')
                     # Padroniza o nome das colunas
                     if "USUARIO_DE_CRIAÇÃO_RM" in df_mes.columns and "DATA_CRIAÇÃO_RM" in df_mes.columns:
                         lista_df.append(df_mes[["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]].copy())
