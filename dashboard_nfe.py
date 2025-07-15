@@ -77,7 +77,7 @@ def carregar_dados():
 df = carregar_dados()
 
 # Adiciona menu lateral
-aba = st.sidebar.radio("Escolha a aba:", ["Dashboard NF", "Dados Produtividade", "Dados Requisições"])
+aba = st.sidebar.radio("Escolha a aba:", ["Dashboard NF", "Dados Produtividade", "Dados Requisições", "Dados Pagamento"])
 
 if aba == "Dashboard NF":
     # 🧭 A partir daqui segue o dashboard normal...
@@ -377,5 +377,32 @@ else:
                     st.line_chart(requisicoes_por_mes)
 
         else:
-            st.title(f"📊 {aba}")
-            st.info("Em breve...")
+            if aba == "Dados Pagamento":
+                st.title("📊 Dados Pagamento")
+                st.markdown("---")
+                # Filtro de mês
+                meses_disponiveis = sorted(df["AnoMes"].dropna().unique())
+                opcoes_filtro = ["Todos"] + meses_disponiveis
+                mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_pagamento")
+                if mes_selecionado == "Todos":
+                    df_filtro = df.copy()
+                else:
+                    df_filtro = df[df["AnoMes"] == mes_selecionado].copy()
+                # Calcular total de juros por atraso de pagamento
+                if "JUROS_MULTA_PARCELA" in df_filtro.columns:
+                    # Limpar e converter para float
+                    df_filtro["JUROS_MULTA_PARCELA"] = (
+                        df_filtro["JUROS_MULTA_PARCELA"].astype(str)
+                        .str.replace("R$", "", regex=False)
+                        .str.replace(".", "", regex=False)
+                        .str.replace(",", ".", regex=False)
+                        .str.strip()
+                    )
+                    df_filtro["JUROS_MULTA_PARCELA"] = pd.to_numeric(df_filtro["JUROS_MULTA_PARCELA"], errors="coerce").fillna(0)
+                    total_juros = df_filtro["JUROS_MULTA_PARCELA"].sum()
+                    st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {total_juros:,.2f}")
+                else:
+                    st.info("Coluna 'JUROS_MULTA_PARCELA' não encontrada nos dados.")
+            else:
+                st.title(f"📊 {aba}")
+                st.info("Em breve...")
