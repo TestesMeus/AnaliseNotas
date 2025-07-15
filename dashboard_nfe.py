@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from modules.carregamento import carregar_dados_nf, carregar_dados_produtividade, carregar_dados_requisicoes
 
 st.set_page_config(page_title="Dashboard de Notas Fiscais", layout="wide")
 
@@ -16,65 +17,9 @@ if st.button("🔄 Atualizar dados"):
     st.cache_data.clear()
     st.session_state.atualizar += 1
 
-# ⚙️ Função principal de carregamento de dados
-@st.cache_data
-def carregar_dados():
-    df = pd.read_csv(CSV_URL)
+# Carregar dados de Notas Fiscais
 
-    # Confere se o cabeçalho veio correto, corrige se necessário
-    if "Fornecedor" not in df.columns:
-        df.columns = df.iloc[0]
-        df = df[1:].reset_index(drop=True)
-
-    # Define colunas esperadas e renomeia defensivamente
-    colunas_esperadas = [
-        "Número", "Fornecedor", "Origem", "Status NF", "Emissão", "Valor Total",
-        "Observações", "Status Envio", "Data Pagamento", "Prazo Limite"
-    ]
-    if len(df.columns) >= len(colunas_esperadas):
-        df.columns = colunas_esperadas[:len(df.columns)]
-
-    # Converte coluna Emissão para datetime
-    df["Emissão"] = pd.to_datetime(df["Emissão"], errors="coerce", dayfirst=True)
-
-    # Remove "R$", pontos e troca vírgula por ponto para Valor Total e converte para float
-    df["Valor Total"] = (
-        df["Valor Total"]
-        .astype(str)
-        .str.replace("R\$", "", regex=True)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-        .str.strip()
-    )
-    df["Valor Total"] = pd.to_numeric(df["Valor Total"], errors="coerce").fillna(0)
-
-    # NÃO remover linhas que têm datas em branco, apenas converter datas (NaT onde vazio)
-    df["Data Pagamento"] = pd.to_datetime(df["Data Pagamento"], errors="coerce", dayfirst=True)
-    df["Prazo Limite"] = pd.to_datetime(df["Prazo Limite"], errors="coerce", dayfirst=True)
-
-    # Opcional: remover linhas que não têm fornecedor ou valor zero, se fizer sentido no seu caso
-    df = df.dropna(subset=["Fornecedor"])
-    # df = df[df["Valor Total"] > 0]  # Use só se quiser ignorar valores zerados
-
-    # Coluna auxiliar para filtro por mês/ano
-    df["AnoMes"] = df["Emissão"].dt.to_period("M").astype(str)
-
-    # Função para status pagamento
-    def verificar_status_pagamento(row):
-        try:
-            if pd.notna(row["Data Pagamento"]) and pd.notna(row["Prazo Limite"]):
-                return "Em Dia" if row["Data Pagamento"] <= row["Prazo Limite"] else "Atrasado"
-            else:
-                return "Sem Dados"
-        except Exception:
-            return "Erro"
-
-    df["Status Pagamento"] = df.apply(verificar_status_pagamento, axis=1).astype(str)
-
-    return df
-
-
-df = carregar_dados()
+df = carregar_dados_nf(CSV_URL)
 
 # Adiciona menu lateral
 aba = st.sidebar.radio("Escolha a aba:", ["Dashboard NF", "Dados Produtividade", "Dados Requisições", "Dados Pagamento"])
@@ -208,40 +153,40 @@ if aba == "Dashboard NF":
         st.pyplot(fig2)
     else:
         st.info("Sem dados sobre pagamento das notas.")
-else:
-    if aba == "Dados Produtividade":
-        st.title("📊 Dados Produtividade")
-        st.markdown("---")
-        
-        # 1. Listar arquivos .xlsx limpos
-        pasta = os.getcwd()
-        arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq]
-        
-        if not arquivos_xlsx:
-            st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.")
+elif aba == "Dados Produtividade":
+    st.title("📊 Dados Produtividade")
+    st.markdown("---")
+    pasta = os.getcwd()
+    arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq]
+    if not arquivos_xlsx:
+        st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.")
+    else:
+        df_prod = carregar_dados_produtividade(arquivos_xlsx)
+        if df_prod.empty:
+            st.warning("Nenhum dado encontrado nas planilhas.")
         else:
             # 2. Ler e unificar os dados
-            lista_df = []
-            for arquivo in arquivos_xlsx:
-                try:
-                    df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
-                    # Preencher apenas as colunas importantes para baixo (ffill)
-                    if 'USUARIO_DE_CRIAÇÃO_RM' in df_mes.columns:
-                        df_mes['USUARIO_DE_CRIAÇÃO_RM'] = df_mes['USUARIO_DE_CRIAÇÃO_RM'].fillna(method='ffill')
-                    if 'DATA_CRIAÇÃO_RM' in df_mes.columns:
-                        df_mes['DATA_CRIAÇÃO_RM'] = df_mes['DATA_CRIAÇÃO_RM'].fillna(method='ffill')
-                    # Padroniza o nome das colunas
-                    if "USUARIO_DE_CRIAÇÃO_RM" in df_mes.columns and "DATA_CRIAÇÃO_RM" in df_mes.columns:
-                        lista_df.append(df_mes[["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]].copy())
-                except Exception as e:
-                    st.error(f"Erro ao ler {arquivo}: {e}")
-            if not lista_df:
-                st.warning("Nenhum dado encontrado nas planilhas.")
-            else:
-                df_prod = pd.concat(lista_df, ignore_index=True)
-                df_prod = df_prod.dropna(subset=["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]).copy()
-                df_prod["DATA_CRIAÇÃO_RM"] = pd.to_datetime(df_prod["DATA_CRIAÇÃO_RM"], errors="coerce", dayfirst=True)
-                df_prod = df_prod.dropna(subset=["DATA_CRIAÇÃO_RM"]).copy()
+            # lista_df = [] # Removido
+            # for arquivo in arquivos_xlsx: # Removido
+            #     try: # Removido
+            #         df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str) # Removido
+            #         # Preencher apenas as colunas importantes para baixo (ffill) # Removido
+            #         if 'USUARIO_DE_CRIAÇÃO_RM' in df_mes.columns: # Removido
+            #             df_mes['USUARIO_DE_CRIAÇÃO_RM'] = df_mes['USUARIO_DE_CRIAÇÃO_RM'].fillna(method='ffill') # Removido
+            #         if 'DATA_CRIAÇÃO_RM' in df_mes.columns: # Removido
+            #             df_mes['DATA_CRIAÇÃO_RM'] = df_mes['DATA_CRIAÇÃO_RM'].fillna(method='ffill') # Removido
+                    # Padroniza o nome das colunas # Removido
+            #         if "USUARIO_DE_CRIAÇÃO_RM" in df_mes.columns and "DATA_CRIAÇÃO_RM" in df_mes.columns: # Removido
+            #             lista_df.append(df_mes[["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]].copy()) # Removido
+                # except Exception as e: # Removido
+                #     st.error(f"Erro ao ler {arquivo}: {e}") # Removido
+            # if not lista_df: # Removido
+            #     st.warning("Nenhum dado encontrado nas planilhas.") # Removido
+            # else: # Removido
+            #     df_prod = pd.concat(lista_df, ignore_index=True) # Removido
+                # df_prod = df_prod.dropna(subset=["USUARIO_DE_CRIAÇÃO_RM", "DATA_CRIAÇÃO_RM"]).copy() # Removido
+                # df_prod["DATA_CRIAÇÃO_RM"] = pd.to_datetime(df_prod["DATA_CRIAÇÃO_RM"], errors="coerce", dayfirst=True) # Removido
+                # df_prod = df_prod.dropna(subset=["DATA_CRIAÇÃO_RM"]).copy() # Removido
 
                 # Filtro por mês
                 df_prod["AnoMes"] = df_prod["DATA_CRIAÇÃO_RM"].dt.strftime("%Y-%m")
@@ -301,108 +246,112 @@ else:
                 plot_mensal = medias.sort_values("Média Mensal", ascending=False).head(top_n).set_index("Requisitante")
                 st.markdown("**Média Mensal de RMs por Requisitante**")
                 st.bar_chart(plot_mensal["Média Mensal"])
+elif aba == "Dados Requisições":
+    st.title("📊 Dados Requisições")
+    st.markdown("---")
+    pasta = os.getcwd()
+    arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq]
+    if not arquivos_xlsx:
+        st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.")
     else:
-        if aba == "Dados Requisições":
-            st.title("📊 Dados Requisições")
-            st.markdown("---")
-            # 1. Listar arquivos .xlsx limpos
-            pasta = os.getcwd()
-            arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq]
-            if not arquivos_xlsx:
-                st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.")
-            else:
-                lista_df = []
-                for arquivo in arquivos_xlsx:
-                    try:
-                        df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
-                        # Preencher apenas as colunas importantes para baixo (ffill)
-                        for col in ['DATA_AUTORIZACAO_RM', 'DATA_CRIAÇÃO_SC', 'CENTRO_CUSTO_OC']:
-                            if col in df_mes.columns:
-                                df_mes[col] = df_mes[col].ffill()
-                        if "DATA_AUTORIZACAO_RM" in df_mes.columns and "DATA_CRIAÇÃO_SC" in df_mes.columns and "CENTRO_CUSTO_OC" in df_mes.columns:
-                            lista_df.append(df_mes[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]].copy())
-                    except Exception as e:
-                        st.error(f"Erro ao ler {arquivo}: {e}")
-                if not lista_df:
-                    st.warning("Nenhum dado encontrado nas planilhas.")
-                else:
-                    df_req = pd.concat(lista_df, ignore_index=True)
-                    # Converter colunas de data para datetime
-                    df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
-                    df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
-                    # Calcular diferença em dias
-                    df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400
-                    # Manter apenas casos com diferença >= 0
-                    df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]
-                    df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
-                    meses_disponiveis = sorted(df_req["AnoMes"].unique())
-                    opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis
-                    # MOVER O SELECTBOX PARA AQUI
-                    mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_requisicoes")
-                    if mes_selecionado == "2025 (Todos)":
-                        df_filtro = df_req.copy()
-                    else:
-                        df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
-
-                    # Exibir contagem simples de pedidos por contrato (filtrada pelo mês)
-                    st.markdown("---")
-                    st.subheader(f"Total de Pedidos por Contrato - {mes_selecionado if mes_selecionado != '2025 (Todos)' else 'Todos os Meses'}")
-                    total_simples_contrato_filtro = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
-                    total_simples_contrato_filtro.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
-                    st.dataframe(total_simples_contrato_filtro, use_container_width=True)
-                    st.metric(f"Total Geral de Pedidos ({mes_selecionado})", len(df_filtro))
-
-                    # Exibir contagem simples de pedidos por contrato (total geral)
-                    st.markdown("---")
-                    st.subheader("Total de Pedidos por Contrato - Todos os Meses")
-                    total_simples_contrato_geral = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
-                    total_simples_contrato_geral.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
-                    st.dataframe(total_simples_contrato_geral, use_container_width=True)
-                    st.metric("Total Geral de Pedidos (Todos os Meses)", len(df_req))
-
-                    # Tempo médio
-                    tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
-                    tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
-                    st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
-                    st.dataframe(
-                        df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(
-                            Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)
-                        ),
-                        use_container_width=True
-                    )
-                    # Gráfico de linha: total de requisições por mês
-                    st.markdown("---")
-                    st.subheader("Evolução Mensal da Quantidade de Requisições")
-                    requisicoes_por_mes = df_req.groupby("AnoMes").size()
-                    st.line_chart(requisicoes_por_mes)
-
+        df_req = carregar_dados_requisicoes(arquivos_xlsx)
+        if df_req.empty:
+            st.warning("Nenhum dado encontrado nas planilhas.")
         else:
-            if aba == "Dados Pagamento":
-                st.title("📊 Dados Pagamento")
+            # 1. Listar arquivos .xlsx limpos
+            # pasta = os.getcwd() # Removido
+            # arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq] # Removido
+            # if not arquivos_xlsx: # Removido
+            #     st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.") # Removido
+            # else: # Removido
+            #     lista_df = [] # Removido
+                # for arquivo in arquivos_xlsx: # Removido
+                #     try: # Removido
+                #         df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str) # Removido
+                #         # Preencher apenas as colunas importantes para baixo (ffill) # Removido
+                #         for col in ['DATA_AUTORIZACAO_RM', 'DATA_CRIAÇÃO_SC', 'CENTRO_CUSTO_OC']: # Removido
+                #             if col in df_mes.columns: # Removido
+                #                 df_mes[col] = df_mes[col].ffill() # Removido
+                #         if "DATA_AUTORIZACAO_RM" in df_mes.columns and "DATA_CRIAÇÃO_SC" in df_mes.columns and "CENTRO_CUSTO_OC" in df_mes.columns: # Removido
+                #             lista_df.append(df_mes[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]].copy()) # Removido
+                #     except Exception as e: # Removido
+                #         st.error(f"Erro ao ler {arquivo}: {e}") # Removido
+            # if not lista_df: # Removido
+            #     st.warning("Nenhum dado encontrado nas planilhas.") # Removido
+            # else: # Removido
+            #     df_req = pd.concat(lista_df, ignore_index=True) # Removido
+                # Converter colunas de data para datetime # Removido
+                # df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True) # Removido
+                # df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True) # Removido
+                # Calcular diferença em dias # Removido
+                # df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400 # Removido
+                # Manter apenas casos com diferença >= 0 # Removido
+                # df_req = df_req[df_req["Dias_RM_para_SC"] >= 0] # Removido
+                # df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m") # Removido
+                # meses_disponiveis = sorted(df_req["AnoMes"].unique()) # Removido
+                # opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis # Removido
+                # MOVER O SELECTBOX PARA AQUI # Removido
+                # mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_requisicoes") # Removido
+                # if mes_selecionado == "2025 (Todos)": # Removido
+                #     df_filtro = df_req.copy() # Removido
+                # else: # Removido
+                #     df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy() # Removido
+
+                # Exibir contagem simples de pedidos por contrato (filtrada pelo mês)
                 st.markdown("---")
-                # Filtro de mês
-                meses_disponiveis = sorted(df["AnoMes"].dropna().unique())
-                opcoes_filtro = ["Todos"] + meses_disponiveis
-                mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_pagamento")
-                if mes_selecionado == "Todos":
-                    df_filtro = df.copy()
-                else:
-                    df_filtro = df[df["AnoMes"] == mes_selecionado].copy()
-                # Calcular total de juros por atraso de pagamento
-                if "JUROS_MULTA_PARCELA" in df_filtro.columns:
-                    # Limpar e converter para float
-                    df_filtro["JUROS_MULTA_PARCELA"] = (
-                        df_filtro["JUROS_MULTA_PARCELA"].astype(str)
-                        .str.replace("R$", "", regex=False)
-                        .str.replace(".", "", regex=False)
-                        .str.replace(",", ".", regex=False)
-                        .str.strip()
-                    )
-                    df_filtro["JUROS_MULTA_PARCELA"] = pd.to_numeric(df_filtro["JUROS_MULTA_PARCELA"], errors="coerce").fillna(0)
-                    total_juros = df_filtro["JUROS_MULTA_PARCELA"].sum()
-                    st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {total_juros:,.2f}")
-                else:
-                    st.info("Coluna 'JUROS_MULTA_PARCELA' não encontrada nos dados.")
-            else:
-                st.title(f"📊 {aba}")
-                st.info("Em breve...")
+                st.subheader(f"Total de Pedidos por Contrato - {mes_selecionado if mes_selecionado != '2025 (Todos)' else 'Todos os Meses'}")
+                total_simples_contrato_filtro = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
+                total_simples_contrato_filtro.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+                st.dataframe(total_simples_contrato_filtro, use_container_width=True)
+                st.metric(f"Total Geral de Pedidos ({mes_selecionado})", len(df_filtro))
+
+                # Exibir contagem simples de pedidos por contrato (total geral)
+                st.markdown("---")
+                st.subheader("Total de Pedidos por Contrato - Todos os Meses")
+                total_simples_contrato_geral = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
+                total_simples_contrato_geral.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+                st.dataframe(total_simples_contrato_geral, use_container_width=True)
+                st.metric("Total Geral de Pedidos (Todos os Meses)", len(df_req))
+
+                # Tempo médio
+                tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
+                tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
+                st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
+                st.dataframe(
+                    df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(
+                        Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)
+                    ),
+                    use_container_width=True
+                )
+                # Gráfico de linha: total de requisições por mês
+                st.markdown("---")
+                st.subheader("Evolução Mensal da Quantidade de Requisições")
+                requisicoes_por_mes = df_req.groupby("AnoMes").size()
+                st.line_chart(requisicoes_por_mes)
+
+elif aba == "Dados Pagamento":
+    st.title("📊 Dados Pagamento")
+    st.markdown("---")
+    meses_disponiveis = sorted(df["AnoMes"].dropna().unique())
+    opcoes_filtro = ["Todos"] + meses_disponiveis
+    mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_pagamento")
+    if mes_selecionado == "Todos":
+        df_filtro = df.copy()
+    else:
+        df_filtro = df[df["AnoMes"] == mes_selecionado].copy()
+    if "JUROS_MULTA_PARCELA" in df_filtro.columns:
+        df_filtro["JUROS_MULTA_PARCELA"] = (
+            df_filtro["JUROS_MULTA_PARCELA"].astype(str)
+            .str.replace("R$", "", regex=False)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .str.strip()
+        )
+        df_filtro["JUROS_MULTA_PARCELA"] = pd.to_numeric(df_filtro["JUROS_MULTA_PARCELA"], errors="coerce").fillna(0)
+        total_juros = df_filtro["JUROS_MULTA_PARCELA"].sum()
+        st.metric("Total de Juros/Multa por Atraso de Pagamento", f"R$ {total_juros:,.2f}")
+    else:
+        st.info("Coluna 'JUROS_MULTA_PARCELA' não encontrada nos dados.")
+else:
+    st.title(f"📊 {aba}")
+    st.info("Em breve...")
