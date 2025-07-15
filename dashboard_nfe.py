@@ -214,7 +214,7 @@ else:
         st.markdown("---")
         
         # 1. Listar arquivos .xls
-        pasta = os.path.dirname(__file__)
+        pasta = os.getcwd()
         arquivos_xls = [arq for arq in os.listdir(pasta) if arq.endswith(".xls") and "2025" in arq]
         
         if not arquivos_xls:
