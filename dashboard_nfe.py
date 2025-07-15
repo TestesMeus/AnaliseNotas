@@ -327,6 +327,9 @@ else:
                     st.warning("Nenhum dado encontrado nas planilhas.")
                 else:
                     df_req = pd.concat(lista_df, ignore_index=True)
+                    # Converter colunas de data para datetime
+                    df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True)
+                    df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True)
                     # Contagem simples de requisições por contrato (todas as linhas válidas)
                     st.markdown("---")
                     st.subheader("Total de Pedidos por Contrato (Contagem Simples)")
