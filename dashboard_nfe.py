@@ -258,76 +258,45 @@ elif aba == "Dados Requisições":
         if df_req.empty:
             st.warning("Nenhum dado encontrado nas planilhas.")
         else:
-            # 1. Listar arquivos .xlsx limpos
-            # pasta = os.getcwd() # Removido
-            # arquivos_xlsx = [arq for arq in os.listdir(pasta) if arq.endswith('_limpa.xlsx') and '2025' in arq] # Removido
-            # if not arquivos_xlsx: # Removido
-            #     st.warning("Nenhum arquivo .xlsx limpo de 2025 encontrado na pasta.") # Removido
-            # else: # Removido
-            #     lista_df = [] # Removido
-                # for arquivo in arquivos_xlsx: # Removido
-                #     try: # Removido
-                #         df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str) # Removido
-                #         # Preencher apenas as colunas importantes para baixo (ffill) # Removido
-                #         for col in ['DATA_AUTORIZACAO_RM', 'DATA_CRIAÇÃO_SC', 'CENTRO_CUSTO_OC']: # Removido
-                #             if col in df_mes.columns: # Removido
-                #                 df_mes[col] = df_mes[col].ffill() # Removido
-                #         if "DATA_AUTORIZACAO_RM" in df_mes.columns and "DATA_CRIAÇÃO_SC" in df_mes.columns and "CENTRO_CUSTO_OC" in df_mes.columns: # Removido
-                #             lista_df.append(df_mes[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "CENTRO_CUSTO_OC"]].copy()) # Removido
-                #     except Exception as e: # Removido
-                #         st.error(f"Erro ao ler {arquivo}: {e}") # Removido
-            # if not lista_df: # Removido
-            #     st.warning("Nenhum dado encontrado nas planilhas.") # Removido
-            # else: # Removido
-            #     df_req = pd.concat(lista_df, ignore_index=True) # Removido
-                # Converter colunas de data para datetime # Removido
-                # df_req["DATA_AUTORIZACAO_RM"] = pd.to_datetime(df_req["DATA_AUTORIZACAO_RM"], errors="coerce", dayfirst=True) # Removido
-                # df_req["DATA_CRIAÇÃO_SC"] = pd.to_datetime(df_req["DATA_CRIAÇÃO_SC"], errors="coerce", dayfirst=True) # Removido
-                # Calcular diferença em dias # Removido
-                # df_req["Dias_RM_para_SC"] = (df_req["DATA_CRIAÇÃO_SC"] - df_req["DATA_AUTORIZACAO_RM"]).dt.total_seconds() / 86400 # Removido
-                # Manter apenas casos com diferença >= 0 # Removido
-                # df_req = df_req[df_req["Dias_RM_para_SC"] >= 0] # Removido
-                # df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m") # Removido
-                # meses_disponiveis = sorted(df_req["AnoMes"].unique()) # Removido
-                # opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis # Removido
-                # MOVER O SELECTBOX PARA AQUI # Removido
-                # mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_requisicoes") # Removido
-                # if mes_selecionado == "2025 (Todos)": # Removido
-                #     df_filtro = df_req.copy() # Removido
-                # else: # Removido
-                #     df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy() # Removido
+            meses_disponiveis = sorted(df_req["AnoMes"].unique())
+            opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis
+            mes_selecionado = st.selectbox("Selecione o mês:", opcoes_filtro, key="mes_requisicoes")
+            if mes_selecionado == "2025 (Todos)":
+                df_filtro = df_req.copy()
+            else:
+                df_filtro = df_req[df_req["AnoMes"] == mes_selecionado].copy()
 
-                # Exibir contagem simples de pedidos por contrato (filtrada pelo mês)
-                st.markdown("---")
-                st.subheader(f"Total de Pedidos por Contrato - {mes_selecionado if mes_selecionado != '2025 (Todos)' else 'Todos os Meses'}")
-                total_simples_contrato_filtro = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
-                total_simples_contrato_filtro.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
-                st.dataframe(total_simples_contrato_filtro, use_container_width=True)
-                st.metric(f"Total Geral de Pedidos ({mes_selecionado})", len(df_filtro))
+            # Só use mes_selecionado daqui pra frente!
+            st.markdown("---")
+            st.subheader(f"Total de Pedidos por Contrato - {mes_selecionado if mes_selecionado != '2025 (Todos)' else 'Todos os Meses'}")
+            total_simples_contrato_filtro = df_filtro["CENTRO_CUSTO_OC"].value_counts().reset_index()
+            total_simples_contrato_filtro.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+            st.dataframe(total_simples_contrato_filtro, use_container_width=True)
+            st.metric(f"Total Geral de Pedidos ({mes_selecionado})", len(df_filtro))
 
-                # Exibir contagem simples de pedidos por contrato (total geral)
-                st.markdown("---")
-                st.subheader("Total de Pedidos por Contrato - Todos os Meses")
-                total_simples_contrato_geral = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
-                total_simples_contrato_geral.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
-                st.dataframe(total_simples_contrato_geral, use_container_width=True)
-                st.metric("Total Geral de Pedidos (Todos os Meses)", len(df_req))
+            # Exibir contagem simples de pedidos por contrato (total geral)
+            st.markdown("---")
+            st.subheader("Total de Pedidos por Contrato - Todos os Meses")
+            total_simples_contrato_geral = df_req["CENTRO_CUSTO_OC"].value_counts().reset_index()
+            total_simples_contrato_geral.columns = ["Contrato (CENTRO_CUSTO_OC)", "Total de Pedidos"]
+            st.dataframe(total_simples_contrato_geral, use_container_width=True)
+            st.metric("Total Geral de Pedidos (Todos os Meses)", len(df_req))
 
-                # Tempo médio
-                tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
-                tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
-                st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
-                st.dataframe(
-                    df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(
-                        Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)
-                    ),
-                    use_container_width=True
-                )
-                # Gráfico de linha: total de requisições por mês
-                st.markdown("---")
-                st.subheader("Evolução Mensal da Quantidade de Requisições")
-                requisicoes_por_mes = df_req.groupby("AnoMes").size()
-                st.line_chart(requisicoes_por_mes)
+            # Tempo médio
+            tempo_medio = df_filtro["Dias_RM_para_SC"].mean()
+            tempo_medio = round(tempo_medio, 1) if not pd.isna(tempo_medio) else None
+            st.metric("Tempo médio (dias) para RM virar SC", tempo_medio if tempo_medio is not None else "Sem dados")
+            st.dataframe(
+                df_filtro[["DATA_AUTORIZACAO_RM", "DATA_CRIAÇÃO_SC", "Dias_RM_para_SC"]].assign(
+                    Dias_RM_para_SC=lambda x: x["Dias_RM_para_SC"].round(1)
+                ),
+                use_container_width=True
+            )
+            # Gráfico de linha: total de requisições por mês
+            st.markdown("---")
+            st.subheader("Evolução Mensal da Quantidade de Requisições")
+            requisicoes_por_mes = df_req.groupby("AnoMes").size()
+            st.line_chart(requisicoes_por_mes)
 
 elif aba == "Dados Pagamento":
     st.title("📊 Dados Pagamento")
