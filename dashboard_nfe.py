@@ -350,7 +350,21 @@ else:
                     linhas_antes_negativo = len(df_req)
                     linhas_negativas = (df_req["Dias_RM_para_SC"] < 0).sum()
                     st.info(f"Linhas descartadas por diferença negativa (SC antes da RM): {linhas_negativas}")
-                    df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]  # descarta casos negativos
+                    df_negativos = df_req[df_req["Dias_RM_para_SC"] < 0].copy()
+                    import io
+                    if not df_negativos.empty:
+                        csv_negativos = df_negativos.to_csv(index=False, sep=';', encoding='utf-8')
+                        st.download_button(
+                            label="Baixar casos descartados (SC antes da RM)",
+                            data=csv_negativos,
+                            file_name="casos_descartados_sc_antes_rm.csv",
+                            mime="text/csv"
+                        )
+                    # Indicador de pedidos convertidos em SC no mesmo dia
+                    pedidos_mesmo_dia = (df_req["Dias_RM_para_SC"] == 0).sum()
+                    st.metric("Pedidos convertidos em SC no mesmo dia", pedidos_mesmo_dia)
+                    # Manter apenas casos com diferença >= 0
+                    df_req = df_req[df_req["Dias_RM_para_SC"] >= 0]
                     df_req["AnoMes"] = df_req["DATA_AUTORIZACAO_RM"].dt.strftime("%Y-%m")
                     meses_disponiveis = sorted(df_req["AnoMes"].unique())
                     opcoes_filtro = ["2025 (Todos)"] + meses_disponiveis
