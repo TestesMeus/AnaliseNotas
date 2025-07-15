@@ -235,8 +235,8 @@ elif aba == "Dados Pagamento":
         for arquivo in arquivos_xlsx:
             try:
                 df_mes = pd.read_excel(os.path.join(pasta, arquivo), dtype=str)
-                if 'JUROS_MULTA_PARCELA' in df_mes.columns and 'DATA_PAGAMENTO' in df_mes.columns:
-                    df_mes['AnoMes'] = pd.to_datetime(df_mes['DATA_PAGAMENTO'], errors='coerce', dayfirst=True).dt.to_period('M').astype(str)
+                if 'JUROS_MULTA_PARCELA' in df_mes.columns and 'DATA_PAGAMENTO_PARCELA' in df_mes.columns:
+                    df_mes['AnoMes'] = pd.to_datetime(df_mes['DATA_PAGAMENTO_PARCELA'], errors='coerce', dayfirst=True).dt.to_period('M').astype(str)
                     lista_df.append(df_mes[['JUROS_MULTA_PARCELA', 'AnoMes']].copy())
             except Exception as e:
                 st.error(f"Erro ao ler {arquivo}: {e}")
